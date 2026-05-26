@@ -1,4 +1,9 @@
-import { GitHub, HelpOutlineRounded, Telegram } from '@mui/icons-material'
+import {
+  GitHub,
+  HelpOutlineRounded,
+  LogoutRounded,
+  Telegram,
+} from '@mui/icons-material'
 import { Box, ButtonGroup, IconButton, Grid } from '@mui/material'
 import { useLockFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
@@ -8,16 +13,26 @@ import SettingClash from '@/components/setting/setting-clash'
 import SettingSystem from '@/components/setting/setting-system'
 import SettingVergeAdvanced from '@/components/setting/setting-verge-advanced'
 import SettingVergeBasic from '@/components/setting/setting-verge-basic'
+import { useAuth } from '@/providers/auth-context'
 import { openWebUrl } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
 import { useThemeMode } from '@/services/states'
 
 const SettingPage = () => {
   const { t } = useTranslation()
+  const { session, logout } = useAuth()
 
   const onError = (err: any) => {
     showNotice.error(err)
   }
+
+  const handleLogout = useLockFn(async () => {
+    try {
+      await logout()
+    } catch (err) {
+      showNotice.error(err)
+    }
+  })
 
   const toGithubRepo = useLockFn(() => {
     return openWebUrl('https://github.com/clash-verge-rev/clash-verge-rev')
@@ -63,6 +78,15 @@ const SettingPage = () => {
             onClick={toGithubRepo}
           >
             <GitHub fontSize="inherit" />
+          </IconButton>
+
+          <IconButton
+            size="medium"
+            color="inherit"
+            title={`${t('auth.logout')}${session ? ` (${session.username})` : ''}`}
+            onClick={handleLogout}
+          >
+            <LogoutRounded fontSize="inherit" />
           </IconButton>
         </ButtonGroup>
       }

@@ -3,6 +3,19 @@
 
 export interface TranslationResources {
   translation: {
+    auth: {
+      confirmPassword: string
+      errors: {
+        empty: string
+        mismatch: string
+      }
+      login: string
+      logout: string
+      password: string
+      register: string
+      title: string
+      username: string
+    }
     connections: {
       components: {
         actions: {

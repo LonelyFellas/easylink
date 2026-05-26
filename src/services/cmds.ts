@@ -13,6 +13,22 @@ export async function getProfiles() {
   return invoke<IProfilesConfig>('get_profiles')
 }
 
+export async function authLogin(username: string, password: string) {
+  return invoke<IAuthSession>('auth_login', { username, password })
+}
+
+export async function authRegister(username: string, password: string) {
+  return invoke<IAuthSession>('auth_register', { username, password })
+}
+
+export async function authLogout() {
+  return invoke<void>('auth_logout')
+}
+
+export async function authGetSession() {
+  return invoke<IAuthSession | null>('auth_get_session')
+}
+
 export async function enhanceProfiles() {
   return (
     (await invoke<ValidationOutcome>('enhance_profiles')).status === 'valid'

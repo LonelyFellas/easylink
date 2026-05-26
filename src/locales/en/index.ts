@@ -1,3 +1,4 @@
+import auth from './auth.json'
 import connections from './connections.json'
 import home from './home.json'
 import layout from './layout.json'
@@ -10,6 +11,7 @@ import shared from './shared.json'
 import tests from './tests.json'
 
 const resources = {
+  auth: auth,
   connections: connections,
   home: home,
   layout: layout,

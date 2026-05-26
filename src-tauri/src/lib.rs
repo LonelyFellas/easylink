@@ -215,6 +215,10 @@ mod app_init {
             cmd::restore_webdav_backup,
             cmd::get_unlock_items,
             cmd::check_media_unlock,
+            cmd::auth_register,
+            cmd::auth_login,
+            cmd::auth_logout,
+            cmd::auth_get_session,
         ]
     }
 }

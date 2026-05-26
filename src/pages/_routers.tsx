@@ -16,10 +16,12 @@ import ProxiesSvg from '@/assets/image/itemicon/proxies.svg?react'
 import RulesSvg from '@/assets/image/itemicon/rules.svg?react'
 import SettingsSvg from '@/assets/image/itemicon/settings.svg?react'
 import UnlockSvg from '@/assets/image/itemicon/unlock.svg?react'
+import { RequireAuth } from '@/providers/require-auth'
 
 import Layout from './_layout'
 import ConnectionsPage from './connections'
 import HomePage from './home'
+import LoginPage from './login'
 import ProfilesPage from './profiles'
 import ProxiesPage from './proxies'
 import RulesPage from './rules'
@@ -79,8 +81,16 @@ export const navItems = [
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
+    Component: LoginPage,
+  },
+  {
     path: '/',
-    Component: Layout,
+    element: (
+      <RequireAuth>
+        <Layout />
+      </RequireAuth>
+    ),
     children: navItems.map(
       (item) =>
         ({

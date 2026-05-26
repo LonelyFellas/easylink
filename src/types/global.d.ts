@@ -306,6 +306,12 @@ interface IProfilesConfig {
   items?: IProfileItem[]
 }
 
+interface IAuthSession {
+  token: string
+  username: string
+  expires_at: number
+}
+
 interface IVergeTestItem {
   uid: string
   name?: string
