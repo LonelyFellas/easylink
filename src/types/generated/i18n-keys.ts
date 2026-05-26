@@ -3,6 +3,7 @@
 
 export const translationKeys = [
   'auth.title',
+  'auth.account',
   'auth.login',
   'auth.register',
   'auth.logout',

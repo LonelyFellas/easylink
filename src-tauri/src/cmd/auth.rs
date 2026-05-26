@@ -125,15 +125,15 @@ pub fn auth_logout() -> CmdResult {
 
 /// 启动时读取当前会话，过期或不存在返回 None
 #[tauri::command]
-pub fn auth_get_session() -> CmdResult<Option<AuthSession>> {
+pub fn auth_get_session() -> Option<AuthSession> {
     let mut store = read_store();
     match &store.session {
-        Some(session) if session.expires_at > now() => Ok(Some(session.clone())),
+        Some(session) if session.expires_at > now() => Some(session.clone()),
         Some(_) => {
             store.session = None;
             let _ = write_store(&store);
-            Ok(None)
+            None
         }
-        None => Ok(None),
+        None => None,
     }
 }

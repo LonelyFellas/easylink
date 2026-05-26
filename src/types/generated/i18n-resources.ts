@@ -4,6 +4,7 @@
 export interface TranslationResources {
   translation: {
     auth: {
+      account: string
       confirmPassword: string
       errors: {
         empty: string
