@@ -33,7 +33,7 @@ async function sendTelegramNotification() {
   log_info(`Download URL: ${downloadUrl}`)
 
   // 读取发布说明和下载地址
-  let releaseContent = ''
+  let releaseContent
   try {
     releaseContent = readFileSync('release.txt', 'utf-8')
     log_info('成功读取 release.txt 文件')
@@ -112,7 +112,7 @@ async function sendTelegramNotification() {
   const releaseTitle = isAutobuild ? '滚动更新版发布' : '正式发布'
   const encodedVersion = encodeURIComponent(version)
   const releaseTag = isAutobuild ? 'autobuild' : `v${version}`
-  const content = `<b>🎉 <a href="https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/${releaseTag}">Clash Verge Rev v${version}</a> ${releaseTitle}</b>\n\n${formattedContent}`
+  const content = `<b>🎉 <a href="https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/${releaseTag}">Easy Link v${version}</a> ${releaseTitle}</b>\n\n${formattedContent}`
 
   // 发送到 Telegram
   try {

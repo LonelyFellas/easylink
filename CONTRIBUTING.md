@@ -1,6 +1,6 @@
 # CONTRIBUTING
 
-Thank you for your interest in contributing to **Clash Verge Rev**! This guide provides instructions to help you set up your development environment and start contributing effectively.
+Thank you for your interest in contributing to **Easy Link**! This guide provides instructions to help you set up your development environment and start contributing effectively.
 
 ## Internationalization (i18n)
 
