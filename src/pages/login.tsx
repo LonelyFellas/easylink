@@ -2,6 +2,8 @@ import {
   Box,
   Button,
   CssBaseline,
+  Link,
+  MenuItem,
   Paper,
   Tab,
   Tabs,
@@ -24,6 +26,10 @@ import { useCustomTheme } from './_layout/hooks'
 import { hideInitialOverlay } from './_layout/utils'
 
 type Mode = 'login' | 'register'
+type RegisterTab = 'phone' | 'email'
+
+const COUNTRY_CODES = ['+86', '+852', '+886', '+1', '+81', '+44']
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const LoginPage = () => {
   const { t } = useTranslation()
@@ -33,9 +39,25 @@ const LoginPage = () => {
   const navigate = useNavigate()
 
   const [mode, setMode] = useState<Mode>('login')
-  const [username, setUsername] = useState('')
+  const [registerTab, setRegisterTab] = useState<RegisterTab>('phone')
+
+  // 登录
+  const [identifier, setIdentifier] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+
+  // 注册
+  const [countryCode, setCountryCode] = useState('+86')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+
+  // 客户端 Mock 验证码：记录已发送的码与目标，校验一致性
+  const [sentCode, setSentCode] = useState('')
+  const [sentTarget, setSentTarget] = useState('')
+  const [countdown, setCountdown] = useState(0)
+
   const [submitting, setSubmitting] = useState(false)
 
   // 登录页不挂载 Layout，需自行移除 index.html 的初始加载遮罩
@@ -43,23 +65,97 @@ const LoginPage = () => {
     hideInitialOverlay()
   }, [])
 
+  useEffect(() => {
+    if (countdown <= 0) return
+    const timer = setInterval(() => {
+      setCountdown((c) => (c <= 1 ? 0 : c - 1))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [countdown])
+
+  // 注册目标：手机号或邮箱，作为后端账号标识
+  const registerTarget = registerTab === 'phone' ? phone.trim() : email.trim()
+
+  const validateRegisterTarget = () => {
+    if (registerTab === 'phone') {
+      if (!phone.trim()) {
+        showNotice.error('auth.errors.phoneEmpty')
+        return false
+      }
+      return true
+    }
+    if (!email.trim()) {
+      showNotice.error('auth.errors.emailEmpty')
+      return false
+    }
+    if (!EMAIL_RE.test(email.trim())) {
+      showNotice.error('auth.errors.emailInvalid')
+      return false
+    }
+    return true
+  }
+
+  const handleGetCode = () => {
+    if (countdown > 0) return
+    if (!validateRegisterTarget()) return
+    const generated = String(Math.floor(100000 + Math.random() * 900000))
+    setSentCode(generated)
+    setSentTarget(registerTarget)
+    setCountdown(60)
+    showNotice.info('auth.codeSent', { code: generated })
+  }
+
+  const switchRegisterTab = (tab: RegisterTab) => {
+    setRegisterTab(tab)
+    setCode('')
+    setSentCode('')
+    setSentTarget('')
+    setCountdown(0)
+  }
+
+  const handleLogin = async () => {
+    if (!identifier.trim() || !loginPassword) {
+      showNotice.error('auth.errors.empty')
+      return
+    }
+    await login(identifier.trim(), loginPassword)
+    navigate('/', { replace: true })
+  }
+
+  const handleRegister = async () => {
+    if (!validateRegisterTarget()) return
+    if (!sentCode || sentTarget !== registerTarget) {
+      showNotice.error('auth.errors.codeFirst')
+      return
+    }
+    if (!code.trim()) {
+      showNotice.error('auth.errors.codeEmpty')
+      return
+    }
+    if (code.trim() !== sentCode) {
+      showNotice.error('auth.errors.codeMismatch')
+      return
+    }
+    if (!password) {
+      showNotice.error('auth.errors.empty')
+      return
+    }
+    if (password !== confirm) {
+      showNotice.error('auth.errors.mismatch')
+      return
+    }
+    await register(registerTarget, password)
+    navigate('/', { replace: true })
+  }
+
   const handleSubmit = useLockFn(async () => {
-    if (!username.trim() || !password) {
-      showNotice.error(t('auth.errors.empty'))
-      return
-    }
-    if (mode === 'register' && password !== confirm) {
-      showNotice.error(t('auth.errors.mismatch'))
-      return
-    }
     setSubmitting(true)
     try {
       if (mode === 'login') {
-        await login(username.trim(), password)
+        await handleLogin()
       } else {
-        await register(username.trim(), password)
+        await handleRegister()
       }
-      navigate('/', { replace: true })
     } catch (err: any) {
       showNotice.error(err?.toString?.() ?? String(err))
     } finally {
@@ -110,55 +206,162 @@ const LoginPage = () => {
           </Box>
           <Typography variant="h6">{t('auth.title')}</Typography>
 
-          <Tabs
-            value={mode}
-            onChange={(_, v: Mode) => setMode(v)}
-            sx={{ alignSelf: 'stretch' }}
-            variant="fullWidth"
-          >
-            <Tab value="login" label={t('auth.login')} />
-            <Tab value="register" label={t('auth.register')} />
-          </Tabs>
+          {mode === 'login' ? (
+            <>
+              <TextField
+                fullWidth
+                size="small"
+                label={t('auth.identifier')}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                autoFocus
+              />
+              <TextField
+                fullWidth
+                size="small"
+                type="password"
+                label={t('auth.password')}
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleSubmit()
+                }}
+              />
+              <Button
+                fullWidth
+                variant="contained"
+                disabled={submitting}
+                onClick={() => void handleSubmit()}
+                sx={{ mt: 1 }}
+              >
+                {t('auth.login')}
+              </Button>
+              <Box
+                sx={{
+                  alignSelf: 'stretch',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Link
+                  component="button"
+                  type="button"
+                  underline="hover"
+                  onClick={() => setMode('register')}
+                >
+                  {t('auth.registerAccount')}
+                </Link>
+                <Link
+                  component="button"
+                  type="button"
+                  underline="hover"
+                  onClick={() => showNotice.info('auth.forgotHint')}
+                >
+                  {t('auth.forgotPassword')}
+                </Link>
+              </Box>
+            </>
+          ) : (
+            <>
+              <Tabs
+                value={registerTab}
+                onChange={(_, v: RegisterTab) => switchRegisterTab(v)}
+                sx={{ alignSelf: 'stretch' }}
+                variant="fullWidth"
+              >
+                <Tab value="phone" label={t('auth.phoneTab')} />
+                <Tab value="email" label={t('auth.emailTab')} />
+              </Tabs>
 
-          <TextField
-            fullWidth
-            size="small"
-            label={t('auth.username')}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoFocus
-          />
-          <TextField
-            fullWidth
-            size="small"
-            type="password"
-            label={t('auth.password')}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && mode === 'login') void handleSubmit()
-            }}
-          />
-          {mode === 'register' && (
-            <TextField
-              fullWidth
-              size="small"
-              type="password"
-              label={t('auth.confirmPassword')}
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
+              {registerTab === 'phone' ? (
+                <Box sx={{ alignSelf: 'stretch', display: 'flex', gap: 1 }}>
+                  <TextField
+                    select
+                    size="small"
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    sx={{ width: 96 }}
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <MenuItem key={c} value={c}>
+                        {c}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label={t('auth.phone')}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </Box>
+              ) : (
+                <TextField
+                  fullWidth
+                  size="small"
+                  label={t('auth.email')}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              )}
+
+              <Box sx={{ alignSelf: 'stretch', display: 'flex', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label={t('auth.verifyCode')}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                />
+                <Button
+                  variant="outlined"
+                  disabled={countdown > 0}
+                  onClick={handleGetCode}
+                  sx={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  {countdown > 0
+                    ? t('auth.resendIn', { sec: countdown })
+                    : t('auth.getCode')}
+                </Button>
+              </Box>
+
+              <TextField
+                fullWidth
+                size="small"
+                type="password"
+                label={t('auth.password')}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <TextField
+                fullWidth
+                size="small"
+                type="password"
+                label={t('auth.confirmPassword')}
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+              />
+
+              <Button
+                fullWidth
+                variant="contained"
+                disabled={submitting}
+                onClick={() => void handleSubmit()}
+                sx={{ mt: 1 }}
+              >
+                {t('auth.register')}
+              </Button>
+              <Link
+                component="button"
+                type="button"
+                underline="hover"
+                onClick={() => setMode('login')}
+              >
+                {t('auth.backToLogin')}
+              </Link>
+            </>
           )}
-
-          <Button
-            fullWidth
-            variant="contained"
-            disabled={submitting}
-            onClick={() => void handleSubmit()}
-            sx={{ mt: 1 }}
-          >
-            {mode === 'login' ? t('auth.login') : t('auth.register')}
-          </Button>
         </Paper>
       </Box>
     </ThemeProvider>

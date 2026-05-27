@@ -5,17 +5,36 @@ export interface TranslationResources {
   translation: {
     auth: {
       account: string
+      backToLogin: string
+      codeSent: string
       confirmPassword: string
+      email: string
+      emailTab: string
       errors: {
+        codeEmpty: string
+        codeFirst: string
+        codeMismatch: string
+        emailEmpty: string
+        emailInvalid: string
         empty: string
         mismatch: string
+        phoneEmpty: string
       }
+      forgotHint: string
+      forgotPassword: string
+      getCode: string
+      identifier: string
       login: string
       logout: string
       password: string
+      phone: string
+      phoneTab: string
       register: string
+      registerAccount: string
+      resendIn: string
       title: string
       username: string
+      verifyCode: string
     }
     connections: {
       components: {
