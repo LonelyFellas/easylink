@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 #![recursion_limit = "512"]
 
+mod api;
 mod cmd;
 pub mod config;
 mod constants;
@@ -216,6 +217,7 @@ mod app_init {
             cmd::get_unlock_items,
             cmd::check_media_unlock,
             cmd::auth_register,
+            cmd::get_verify_code,
             cmd::auth_login,
             cmd::auth_logout,
             cmd::auth_get_session,

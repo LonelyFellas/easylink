@@ -43,3 +43,10 @@ pub mod tun {
 
     pub const DNS_HIJACK: &[&str] = &["any:53"];
 }
+
+pub mod api {
+    pub mod base_url {
+        pub const DEV: &str = "https://dev.easylinkvpn.com/api";
+        pub const PROD: &str = "https://api.easylinkvpn.com/api";
+    }
+}

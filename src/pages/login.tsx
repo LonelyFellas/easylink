@@ -11,6 +11,7 @@ import {
   ThemeProvider,
   Typography,
 } from '@mui/material'
+import { invoke } from '@tauri-apps/api/core'
 import { useLockFn } from 'ahooks'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -95,14 +96,12 @@ const LoginPage = () => {
     return true
   }
 
-  const handleGetCode = () => {
+  const handleGetCode = async () => {
     if (countdown > 0) return
     if (!validateRegisterTarget()) return
-    const generated = String(Math.floor(100000 + Math.random() * 900000))
-    setSentCode(generated)
-    setSentTarget(registerTarget)
-    setCountdown(60)
-    showNotice.info('auth.codeSent', { code: generated })
+    // 调用rust tauri api 获取验证码
+    const result = await invoke('get_verify_code', { phone: registerTarget })
+    console.log(result)
   }
 
   const switchRegisterTab = (tab: RegisterTab) => {

@@ -1,4 +1,5 @@
-use super::CmdResult;
+use super::{CmdResult, StringifyErr as _};
+use crate::api::ApiClient;
 use crate::config::{decrypt_data, encrypt_data};
 use crate::utils::dirs;
 use serde::{Deserialize, Serialize};
@@ -21,6 +22,17 @@ pub struct AuthSession {
 struct AuthUser {
     username: String,
     password: String,
+}
+
+// 注册Model
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct RegisterModel {
+    username: String,
+    password: String,
+    repassword: String,
+    jiqi_code: Option<String>,
+    device_id: i32,
+    key: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -75,25 +87,42 @@ fn new_session(username: &str) -> AuthSession {
     }
 }
 
-/// 注册（Mock）：账号已存在则报错，否则创建并直接登录
+/// 注册：调用后台 `/register`，成功返回会话信息
 #[tauri::command]
-pub fn auth_register(username: String, password: String) -> CmdResult<AuthSession> {
-    let username = username.trim().to_string();
-    if username.is_empty() || password.is_empty() {
-        return Err("用户名和密码不能为空".into());
-    }
-    let mut store = read_store();
-    if store.users.iter().any(|u| u.username == username) {
-        return Err("该用户名已被注册".into());
-    }
-    store.users.push(AuthUser {
-        username: username.clone(),
+pub async fn auth_register(
+    username: String,
+    password: String,
+    repassword: String,
+    jiqi_code: Option<String>,
+    key: Option<String>,
+) -> CmdResult<AuthSession> {
+    let model = RegisterModel {
+        username,
         password,
-    });
-    let session = new_session(&username);
-    store.session = Some(session.clone());
-    write_store(&store)?;
-    Ok(session)
+        repassword,
+        jiqi_code,
+        device_id: 3,
+        key,
+    };
+    ApiClient::global()
+        .post("/register", &model, None)
+        .await
+        .stringify_err()
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct SendSmsModel {
+    phone: String,
+}
+
+#[tauri::command]
+pub async fn get_verify_code(phone: String) -> CmdResult<String> {
+    let model = SendSmsModel { phone };
+    let result = ApiClient::global()
+        .post("/sendsms", &model, None)
+        .await
+        .stringify_err()?;
+    Ok(result)
 }
 
 /// 登录（Mock）：校验本地已注册账号
