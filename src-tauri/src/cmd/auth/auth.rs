@@ -1,5 +1,6 @@
-use super::{CmdResult, StringifyErr as _};
 use crate::api::ApiClient;
+use crate::cmd::CmdResult;
+use crate::cmd::StringifyErr as _;
 use crate::config::{decrypt_data, encrypt_data};
 use crate::utils::dirs;
 use serde::{Deserialize, Serialize};
@@ -115,14 +116,19 @@ struct SendSmsModel {
     phone: String,
 }
 
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
+pub struct SendSmsData {
+    key: String,
+}
+
 #[tauri::command]
-pub async fn get_verify_code(phone: String) -> CmdResult<String> {
+pub async fn get_verify_code(phone: String) -> CmdResult<SendSmsData> {
     let model = SendSmsModel { phone };
-    let result = ApiClient::global()
+    let data: SendSmsData = ApiClient::global()
         .post("/sendsms", &model, None)
         .await
         .stringify_err()?;
-    Ok(result)
+    Ok(data)
 }
 
 /// 登录（Mock）：校验本地已注册账号

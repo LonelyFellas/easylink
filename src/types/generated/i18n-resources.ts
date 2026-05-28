@@ -14,11 +14,14 @@ export interface TranslationResources {
         codeEmpty: string
         codeFirst: string
         codeMismatch: string
+        confirmEmpty: string
         emailEmpty: string
         emailInvalid: string
         empty: string
         mismatch: string
+        passwordEmpty: string
         phoneEmpty: string
+        phoneInvalid: string
       }
       forgotHint: string
       forgotPassword: string
@@ -26,12 +29,16 @@ export interface TranslationResources {
       identifier: string
       login: string
       logout: string
+      noAccount: string
+      optional: string
       password: string
       phone: string
       phoneTab: string
       register: string
       registerAccount: string
       resendIn: string
+      switchToCode: string
+      switchToPassword: string
       title: string
       username: string
       verifyCode: string

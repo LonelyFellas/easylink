@@ -24,7 +24,6 @@ pub mod webdav;
 
 // Re-export all command functions for backwards compatibility
 pub use app::*;
-pub use auth::*;
 pub use backup::*;
 pub use clash::*;
 pub use lightweight::*;

@@ -46,7 +46,9 @@ pub mod tun {
 
 pub mod api {
     pub mod base_url {
-        pub const DEV: &str = "https://dev.easylinkvpn.com/api";
-        pub const PROD: &str = "https://api.easylinkvpn.com/api";
+        // pub const DEV: &str = "https://vpnapi.easylinkvpn.com/api";
+        // pub const PROD: &str = "https://vpnapi.easylinkvpn.com/api";
+        pub const DEV: &str = "http://localhost:3040/api";
+        pub const PROD: &str = "http://localhost:3040/api";
     }
 }

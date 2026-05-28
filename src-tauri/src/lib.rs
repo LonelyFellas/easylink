@@ -20,6 +20,7 @@ use crate::{
 };
 use anyhow::Result;
 use clash_verge_logging::{Type, logging};
+use cmd::auth::auth::{auth_get_session, auth_login, auth_logout, auth_register, get_verify_code};
 use once_cell::sync::OnceCell;
 use tauri::{AppHandle, Manager as _};
 #[cfg(target_os = "macos")]
@@ -216,11 +217,11 @@ mod app_init {
             cmd::restore_webdav_backup,
             cmd::get_unlock_items,
             cmd::check_media_unlock,
-            cmd::auth_register,
-            cmd::get_verify_code,
-            cmd::auth_login,
-            cmd::auth_logout,
-            cmd::auth_get_session,
+            auth_register,
+            get_verify_code,
+            auth_login,
+            auth_logout,
+            auth_get_session,
         ]
     }
 }

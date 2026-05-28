@@ -17,8 +17,12 @@ export async function authLogin(username: string, password: string) {
   return invoke<IAuthSession>('auth_login', { username, password })
 }
 
-export async function authRegister(username: string, password: string) {
-  return invoke<IAuthSession>('auth_register', { username, password })
+export async function authLoginByCode(phone: string, key: string) {
+  return invoke<IAuthSession>('auth_login_by_code', { phone, key })
+}
+
+export async function authRegister(params: IAuthRegister) {
+  return invoke<IAuthSession>('auth_register', { ...params })
 }
 
 export async function authLogout() {
@@ -27,6 +31,10 @@ export async function authLogout() {
 
 export async function authGetSession() {
   return invoke<IAuthSession | null>('auth_get_session')
+}
+
+export async function getVerifyCode(phone: string) {
+  return invoke<boolean>('get_verify_code', { phone })
 }
 
 export async function enhanceProfiles() {

@@ -3,8 +3,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   authGetSession,
   authLogin,
+  authLoginByCode,
   authLogout,
   authRegister,
+  getVerifyCode,
 } from '@/services/cmds'
 
 import { AuthContext } from './auth-context'
@@ -34,8 +36,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSession(await authLogin(username, password))
   }, [])
 
-  const register = useCallback(async (username: string, password: string) => {
-    setSession(await authRegister(username, password))
+  const loginByCode = useCallback(async (phone: string, key: string) => {
+    setSession(await authLoginByCode(phone, key))
+  }, [])
+
+  const register = useCallback(async (params: IAuthRegister) => {
+    setSession(await authRegister({ ...params }))
   }, [])
 
   const logout = useCallback(async () => {
@@ -43,9 +49,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSession(null)
   }, [])
 
+  const getSmsCode = useCallback(async (phone: string) => {
+    const result = await getVerifyCode(phone)
+    return result
+  }, [])
+
   const value = useMemo(
-    () => ({ session, isLoading, login, register, logout }),
-    [session, isLoading, login, register, logout],
+    () => ({
+      session,
+      isLoading,
+      login,
+      loginByCode,
+      register,
+      logout,
+      getSmsCode,
+    }),
+    [session, isLoading, login, loginByCode, register, logout, getSmsCode],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>
