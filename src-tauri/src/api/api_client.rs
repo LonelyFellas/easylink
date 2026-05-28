@@ -81,6 +81,8 @@ impl ApiClient {
     }
 
     fn new() -> Self {
+        // reqwest 客户端构造仅在初始化失败（无法加载 TLS 后端等）时返回 Err，属于不可恢复错误
+        #[allow(clippy::expect_used)]
         let http = Client::builder()
             // 关键：禁用系统/环境代理，确保不会被本机 Clash 拦截。
             .no_proxy()
@@ -102,7 +104,7 @@ impl ApiClient {
     /// POST JSON，按 envelope 协议解出 `data`。
     pub async fn post<B, T>(&self, path: &str, body: &B, token: Option<&str>) -> Result<T>
     where
-        B: Serialize + ?Sized,
+        B: Serialize + ?Sized + Sync,
         T: DeserializeOwned,
     {
         self.request(Method::POST, path, Some(body), token).await
@@ -121,7 +123,7 @@ impl ApiClient {
     #[allow(dead_code)]
     pub async fn post_json<B, T>(&self, path: &str, body: &B, token: Option<&str>) -> Result<T>
     where
-        B: Serialize + ?Sized,
+        B: Serialize + ?Sized + Sync,
         T: DeserializeOwned,
     {
         let text = self.send_for_text(Method::POST, path, Some(body), token).await?;
@@ -131,12 +133,11 @@ impl ApiClient {
     /// 通用 envelope 请求。
     async fn request<B, T>(&self, method: Method, path: &str, body: Option<&B>, token: Option<&str>) -> Result<T>
     where
-        B: Serialize + ?Sized,
+        B: Serialize + ?Sized + Sync,
         T: DeserializeOwned,
     {
         let text = self.send_for_text(method, path, body, token).await?;
-        let env: Envelope =
-            serde_json::from_str(&text).with_context(|| format!("解析响应失败: {}", preview(&text)))?;
+        let env: Envelope = serde_json::from_str(&text).with_context(|| format!("解析响应失败: {}", preview(&text)))?;
 
         if !env.is_ok() {
             bail!(env.message());
@@ -156,7 +157,7 @@ impl ApiClient {
         token: Option<&str>,
     ) -> Result<String>
     where
-        B: Serialize + ?Sized,
+        B: Serialize + ?Sized + Sync,
     {
         let url = self.endpoint(path);
         let mut req = self.http.request(method, &url).headers(self.build_headers(token)?);
@@ -210,7 +211,7 @@ fn preview(s: &str) -> String {
     }
 }
 
-fn default_base_url() -> &'static str {
+const fn default_base_url() -> &'static str {
     #[cfg(feature = "verge-dev")]
     {
         base_url::DEV
@@ -222,6 +223,7 @@ fn default_base_url() -> &'static str {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -270,10 +272,8 @@ mod tests {
         struct Out {
             key: String,
         }
-        let v: Out = parse(
-            r#"{"status":"success","messgae":"短信发送成功","data":{"key":"2059860532254932993"}}"#,
-        )
-        .unwrap();
+        let v: Out =
+            parse(r#"{"status":"success","messgae":"短信发送成功","data":{"key":"2059860532254932993"}}"#).unwrap();
         assert_eq!(v.key, "2059860532254932993");
     }
 
