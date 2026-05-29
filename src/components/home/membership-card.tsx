@@ -11,10 +11,9 @@ import {
 import { useLockFn } from 'ahooks'
 
 import { useAuth } from '@/providers/auth-context'
-import { openWebUrl } from '@/services/cmds'
+import { openRecharge } from '@/services/recharge'
 
 import { EnhancedCard } from './enhanced-card'
-import { RECHARGE_URL } from './recharge'
 
 interface Tier {
   key: string
@@ -32,7 +31,7 @@ export const MembershipCard = () => {
   const theme = useTheme()
   const { session } = useAuth()
 
-  const upgrade = useLockFn(() => openWebUrl(RECHARGE_URL))
+  const upgrade = useLockFn(() => openRecharge())
 
   const currentKey = session?.vip_type?.toLowerCase()
   const currentRank = TIERS.find((tier) => tier.key === currentKey)?.rank ?? 0

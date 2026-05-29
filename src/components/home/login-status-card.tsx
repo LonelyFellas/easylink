@@ -2,15 +2,19 @@ import {
   AccountBalanceWalletOutlined,
   PersonOutlineRounded,
 } from '@mui/icons-material'
-import { Box, Button, Stack, Typography } from '@mui/material'
+import { Box, Button, Chip, Stack, Typography } from '@mui/material'
 import { useLockFn } from 'ahooks'
 import dayjs from 'dayjs'
 
 import { useAuth } from '@/providers/auth-context'
-import { openWebUrl } from '@/services/cmds'
+import { openRecharge } from '@/services/recharge'
 
 import { EnhancedCard } from './enhanced-card'
-import { RECHARGE_URL } from './recharge'
+
+const VIP_COLOR_MAP: Record<string, 'primary' | 'warning'> = {
+  svip: 'warning',
+  vip: 'primary',
+}
 
 /** 账号脱敏：邮箱保留首字母 + 域名；手机号保留前 3 后 2 位 */
 const maskAccount = (account?: string) => {
@@ -29,37 +33,44 @@ const formatExpiry = (value?: string) => {
   return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : value
 }
 
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
-  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-    <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
-      {label}
+const cardTitle = (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+    <Typography variant="h6" sx={{ fontWeight: 'medium', fontSize: 18 }}>
+      登录状态
     </Typography>
-    <Typography
-      variant="body2"
-      sx={{
-        fontWeight: 'medium',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}
-      title={value}
-    >
-      {value}
-    </Typography>
-  </Stack>
+    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+      <Box
+        sx={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          bgcolor: 'success.main',
+          mr: 0.5,
+        }}
+      />
+      <Typography
+        variant="caption"
+        color="success.main"
+        sx={{ fontWeight: 'medium' }}
+      >
+        已登录
+      </Typography>
+    </Box>
+  </Box>
 )
 
 export const LoginStatusCard = () => {
   const { session } = useAuth()
 
-  const recharge = useLockFn(() => openWebUrl(RECHARGE_URL))
+  const recharge = useLockFn(() => openRecharge())
 
   const account = maskAccount(session?.username)
   const expiry = formatExpiry(session?.vip_end_time || session?.expire_in)
+  const vipType = session?.vip_type
 
   return (
     <EnhancedCard
-      title="登录状态"
+      title={cardTitle}
       icon={<PersonOutlineRounded />}
       iconColor="success"
       action={
@@ -75,26 +86,59 @@ export const LoginStatusCard = () => {
       }
     >
       <Stack spacing={1.5}>
-        <InfoRow label="当前账号" value={account} />
-        <InfoRow label="到期时间" value={expiry} />
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Box
-            sx={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              bgcolor: 'success.main',
-              mr: 1,
-            }}
-          />
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Typography
             variant="body2"
-            color="success.main"
-            sx={{ fontWeight: 'medium' }}
+            color="text.secondary"
+            sx={{ flexShrink: 0 }}
           >
-            已登录
+            当前账号
           </Typography>
-        </Box>
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 'medium',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            title={account}
+          >
+            {account}
+          </Typography>
+          <Chip
+            size="small"
+            label={vipType ? vipType.toUpperCase() : '普通用户'}
+            color={
+              vipType
+                ? (VIP_COLOR_MAP[vipType.toLowerCase()] ?? 'default')
+                : 'default'
+            }
+            variant={vipType ? 'filled' : 'outlined'}
+            sx={{ height: 20, flexShrink: 0 }}
+          />
+        </Stack>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ flexShrink: 0 }}
+          >
+            到期时间
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 'medium',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            title={expiry}
+          >
+            {expiry}
+          </Typography>
+        </Stack>
       </Stack>
     </EnhancedCard>
   )

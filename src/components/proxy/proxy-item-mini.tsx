@@ -3,6 +3,7 @@ import { alpha, Box, ListItemButton, styled, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
 
 import { BaseLoading } from '@/components/base'
+import { useNodeAccess } from '@/hooks/use-node-access'
 import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
 import delayManager from '@/services/delay'
 
@@ -25,6 +26,10 @@ export const ProxyItemMini = (props: Props) => {
     proxy,
     group.name,
   )
+
+  // 超出当前会员身份的节点：文字置灰（仍可点击，点击后提示充值）
+  const { isLocked } = useNodeAccess()
+  const locked = isLocked(proxy.name)
 
   return (
     <ListItemButton
@@ -77,7 +82,7 @@ export const ProxyItemMini = (props: Props) => {
         <Typography
           variant="body2"
           component="div"
-          color="text.primary"
+          color={locked ? 'text.disabled' : 'text.primary'}
           sx={{
             display: 'block',
             textOverflow: 'ellipsis',

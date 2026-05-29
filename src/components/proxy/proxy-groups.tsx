@@ -29,7 +29,9 @@ import { useLocation } from 'react-router'
 import { delayGroup, healthcheckProxyProvider } from 'tauri-plugin-mihomo-api'
 
 import { BaseEmpty } from '@/components/base'
+import { useNodeAccess } from '@/hooks/use-node-access'
 import { useProxySelection } from '@/hooks/use-proxy-selection'
+import { useRechargeDialog } from '@/hooks/use-recharge-dialog'
 import { useVerge } from '@/hooks/use-verge'
 import { useProxiesData } from '@/providers/app-data-context'
 import { calcuProxies, updateProxyChainConfigInRuntime } from '@/services/cmds'
@@ -107,6 +109,9 @@ export const ProxyGroups = (props: Props) => {
     open: boolean
     message: string
   }>({ open: false, message: '' })
+  // 节点权限：超出当前会员身份的节点点击后提示充值，不执行切换
+  const { isLocked } = useNodeAccess()
+  const { promptRecharge, rechargeDialog } = useRechargeDialog()
 
   const { verge } = useVerge()
   const { proxies: proxiesData } = useProxiesData()
@@ -345,6 +350,12 @@ export const ProxyGroups = (props: Props) => {
 
   const handleChangeProxy = useCallback(
     (group: IProxyGroupItem, proxy: IProxyItem) => {
+      // 节点超出当前会员身份：拦截切换，弹窗提示去官网充值
+      if (isLocked(proxy.name)) {
+        promptRecharge()
+        return
+      }
+
       if (isChainMode) {
         // 使用函数式更新来避免状态延迟问题
         setProxyChain((prev) => {
@@ -380,7 +391,7 @@ export const ProxyGroups = (props: Props) => {
 
       handleProxyGroupChange(group, proxy)
     },
-    [handleProxyGroupChange, isChainMode, t],
+    [handleProxyGroupChange, isChainMode, isLocked, promptRecharge, t],
   )
 
   // 测全部延迟
@@ -559,6 +570,8 @@ export const ProxyGroups = (props: Props) => {
           onClose={handleGroupMenuClose}
           onSelect={handleGroupSelect}
         />
+
+        {rechargeDialog}
       </>
     )
   }
@@ -579,6 +592,8 @@ export const ProxyGroups = (props: Props) => {
 
       {renderProxyList('calc(100% - 14px)')}
       <ScrollTopButton show={showScrollTop} onClick={scrollToTop} />
+
+      {rechargeDialog}
     </div>
   )
 }
@@ -769,8 +784,6 @@ function ProxyVirtualList({
   onHeadState,
   onChangeProxy,
 }: ProxyVirtualListProps) {
-  console.log('renderList', renderList)
-  console.log('virtualItems', virtualItems)
   const theme = useTheme()
   const stickyBackground =
     theme.palette.mode === 'dark' ? '#1e1f27' : 'var(--background-color)'

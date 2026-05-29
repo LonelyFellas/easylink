@@ -12,6 +12,7 @@ import {
 } from '@mui/material'
 
 import { BaseLoading } from '@/components/base'
+import { useNodeAccess } from '@/hooks/use-node-access'
 import { useProxyDelayState } from '@/hooks/use-proxy-delay-state'
 import delayManager from '@/services/delay'
 
@@ -50,6 +51,10 @@ export const ProxyItem = (props: Props) => {
     proxy,
     group.name,
   )
+
+  // 超出当前会员身份的节点：文字置灰（仍可点击，点击后提示充值）
+  const { isLocked } = useNodeAccess()
+  const locked = isLocked(proxy.name)
 
   return (
     <ListItem sx={sx}>
@@ -93,7 +98,7 @@ export const ProxyItem = (props: Props) => {
                   display: 'inline-block',
                   marginRight: '8px',
                   fontSize: '14px',
-                  color: 'text.primary',
+                  color: locked ? 'text.disabled' : 'text.primary',
                 }}
               >
                 {proxy.name}
