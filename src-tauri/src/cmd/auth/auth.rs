@@ -288,6 +288,13 @@ fn write_store(store: &AuthStore) -> Result<(), String> {
     std::fs::write(&path, encrypted).map_err(|e| e.to_string())
 }
 
+/// 将登录会话加密写入本地，供下次启动恢复登录态。
+fn persist_session(session: &AuthUserInfo) -> Result<(), String> {
+    let mut store = read_store();
+    store.session = Some(session.clone());
+    write_store(&store)
+}
+
 #[allow(dead_code)] // 暂未使用：接入真实后端后会用于会话过期判断
 fn now() -> i64 {
     chrono::Utc::now().timestamp()
@@ -393,11 +400,10 @@ pub async fn auth_login(username: String, password: String) -> CmdResult<AuthUse
         .inspect_err(|e| eprintln!("auth_login /login failed: {e}"))
         .stringify_err()?;
     data.username = Some(model.username.clone());
-    println!("data: {:?}", data);
 
-    // let session = new_session(&username);
-    // store.session = Some(session.clone());
-    // write_store(&store)?;
+    // 持久化会话，下次启动自动恢复登录态
+    persist_session(&data)?;
+
     Ok(data)
 }
 
@@ -410,17 +416,8 @@ pub fn auth_logout() -> CmdResult {
     Ok(())
 }
 
-/// 启动时读取当前会话，过期或不存在返回 None
+/// 启动时读取持久化的会话，不存在返回 None
 #[tauri::command]
 pub fn auth_get_session() -> Option<AuthUserInfo> {
-    let mut store = read_store();
-    match &store.session {
-        // Some(session) if session.expire_in > now() => Some(session.clone()),
-        Some(_) => {
-            store.session = None;
-            let _ = write_store(&store);
-            None
-        }
-        None => None,
-    }
+    read_store().session
 }
