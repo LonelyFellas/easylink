@@ -138,6 +138,7 @@ fn build_rules() -> Vec<Value> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

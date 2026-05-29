@@ -288,6 +288,7 @@ fn write_store(store: &AuthStore) -> Result<(), String> {
     std::fs::write(&path, encrypted).map_err(|e| e.to_string())
 }
 
+#[allow(dead_code)] // 暂未使用：接入真实后端后会用于会话过期判断
 fn now() -> i64 {
     chrono::Utc::now().timestamp()
 }
