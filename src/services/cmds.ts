@@ -37,6 +37,10 @@ export async function getVerifyCode(phone: string) {
   return invoke<boolean>('get_verify_code', { phone })
 }
 
+export async function authBuildProfileYaml(nodes: INode[]) {
+  return invoke<string>('auth_build_profile_yaml', { nodes })
+}
+
 export async function enhanceProfiles() {
   return (
     (await invoke<ValidationOutcome>('enhance_profiles')).status === 'valid'

@@ -44,6 +44,7 @@ import {
   useProxiesData,
   useRulesData,
 } from '@/providers/app-data-context'
+import { useAuth } from '@/providers/auth-context'
 import delayManager from '@/services/delay'
 import { debugLog } from '@/utils/debug'
 
@@ -54,6 +55,20 @@ const STORAGE_KEY_SORT_TYPE = 'clash-verge-proxy-sort-type'
 
 const AUTO_CHECK_DEFAULT_INTERVAL_MINUTES = 5
 const AUTO_CHECK_INITIAL_DELAY_MS = 100
+
+// 登录返回的节点会带 vip_type，给标签上色
+const VIP_COLOR_MAP: Record<
+  string,
+  'default' | 'primary' | 'secondary' | 'warning'
+> = {
+  svip: 'warning',
+  vip: 'primary',
+}
+
+// 隐藏加载失败的旗帜图，避免显示破图
+const hideBrokenImg = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  ;(e.target as HTMLImageElement).style.display = 'none'
+}
 
 // 代理节点信息接口
 interface ProxyOption {
@@ -112,7 +127,17 @@ export const CurrentProxyCard = () => {
   const navigate = useNavigate()
   const theme = useTheme()
   const { proxies } = useProxiesData()
+  const { session } = useAuth()
   const { clashConfig } = useClashConfigData()
+
+  // 用登录返回的 nodes 按节点名建索引，给下拉项补充旗帜 + VIP 标签
+  const nodeMetaByName = useMemo(() => {
+    const map = new Map<string, INode>()
+    for (const node of session?.nodes ?? []) {
+      if (node?.name) map.set(node.name, node)
+    }
+    return map
+  }, [session])
   const { rules } = useRulesData()
   const { refreshProxy } = useAppRefreshers()
   const { isCoreDataPending } = useCoreDataStatus()
@@ -647,15 +672,57 @@ export const CurrentProxyCard = () => {
       state.proxyData.records[selected],
       state.selection.group,
     )
+    const meta = nodeMetaByName.get(selected)
 
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Typography noWrap>{selected}</Typography>
-        <Chip
-          size="small"
-          label={delayManager.formatDelay(delayValue)}
-          color={convertDelayColor(delayValue)}
-        />
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+          {meta?.flags && (
+            <Box
+              component="img"
+              src={meta.flags}
+              alt=""
+              onError={hideBrokenImg}
+              sx={{
+                width: 20,
+                height: 14,
+                objectFit: 'contain',
+                flexShrink: 0,
+                mr: 1,
+                borderRadius: 0.5,
+              }}
+            />
+          )}
+          <Typography noWrap>{selected}</Typography>
+        </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            flexShrink: 0,
+          }}
+        >
+          {meta?.vip_type && (
+            <Chip
+              size="small"
+              label={meta.vip_type.toUpperCase()}
+              color={VIP_COLOR_MAP[meta.vip_type] ?? 'default'}
+              sx={{ height: 22, fontSize: 11 }}
+            />
+          )}
+          <Chip
+            size="small"
+            label={delayManager.formatDelay(delayValue)}
+            color={convertDelayColor(delayValue)}
+          />
+        </Box>
       </Box>
     )
   }
@@ -1055,6 +1122,7 @@ export const CurrentProxyCard = () => {
                             state.selection.group,
                           )
                         : -1
+                    const meta = nodeMetaByName.get(proxy.name)
                     return (
                       <MenuItem
                         key={proxy.name}
@@ -1067,9 +1135,38 @@ export const CurrentProxyCard = () => {
                           pr: 1,
                         }}
                       >
+                        {meta?.flags && (
+                          <Box
+                            component="img"
+                            src={meta.flags}
+                            alt=""
+                            onError={hideBrokenImg}
+                            sx={{
+                              width: 20,
+                              height: 14,
+                              objectFit: 'contain',
+                              flexShrink: 0,
+                              mr: 1,
+                              borderRadius: 0.5,
+                            }}
+                          />
+                        )}
                         <Typography noWrap sx={{ flex: 1, mr: 1 }}>
                           {proxy.name}
                         </Typography>
+                        {meta?.vip_type && (
+                          <Chip
+                            size="small"
+                            label={meta.vip_type.toUpperCase()}
+                            color={VIP_COLOR_MAP[meta.vip_type] ?? 'default'}
+                            sx={{
+                              height: '22px',
+                              fontSize: 11,
+                              flexShrink: 0,
+                              mr: 0.75,
+                            }}
+                          />
+                        )}
                         <Chip
                           size="small"
                           label={delayManager.formatDelay(delayValue)}

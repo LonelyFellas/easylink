@@ -21,6 +21,7 @@ use crate::{
 use anyhow::Result;
 use clash_verge_logging::{Type, logging};
 use cmd::auth::auth::{auth_get_session, auth_login, auth_logout, auth_register, get_verify_code};
+use cmd::auth::node_profile::auth_build_profile_yaml;
 use once_cell::sync::OnceCell;
 use tauri::{AppHandle, Manager as _};
 #[cfg(target_os = "macos")]
@@ -222,6 +223,7 @@ mod app_init {
             auth_login,
             auth_logout,
             auth_get_session,
+            auth_build_profile_yaml,
         ]
     }
 }

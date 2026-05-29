@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate } from 'react-router'
 
-import LogoSvg from '@/assets/image/logo.svg?react'
+import { NoticeManager } from '@/components/layout/notice-manager'
 import { WindowControls } from '@/components/layout/window-controller'
 import { useWindowDecorations } from '@/hooks/use-window'
 import { useAuth } from '@/providers/auth-context'
@@ -38,6 +38,7 @@ const LoginPage = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <NoticeManager />
       {!decorated && (
         <div className="the_titlebar">
           <div
@@ -69,7 +70,9 @@ const LoginPage = () => {
           }}
         >
           <Box sx={{ width: 72, height: 72, mb: 1 }}>
-            <LogoSvg style={{ width: '100%', height: '100%' }} />
+            {/* <LogoSvg style={{ width: '100%', height: '100%' }} /> */}
+            {/* 标题 */}
+            <div className="text-3xl font-bold text-primary">EasyLink</div>
           </Box>
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {t('auth.title')}

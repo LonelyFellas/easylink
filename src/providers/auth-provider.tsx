@@ -33,15 +33,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   const login = useCallback(async (username: string, password: string) => {
-    setSession(await authLogin(username, password))
+    const next = await authLogin(username, password)
+    setSession(next)
+    return next
   }, [])
 
   const loginByCode = useCallback(async (phone: string, key: string) => {
-    setSession(await authLoginByCode(phone, key))
+    const next = await authLoginByCode(phone, key)
+    setSession(next)
+    return next
   }, [])
 
   const register = useCallback(async (params: IAuthRegister) => {
-    setSession(await authRegister({ ...params }))
+    const next = await authRegister({ ...params })
+    setSession(next)
+    return next
   }, [])
 
   const logout = useCallback(async () => {

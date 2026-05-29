@@ -769,6 +769,8 @@ function ProxyVirtualList({
   onHeadState,
   onChangeProxy,
 }: ProxyVirtualListProps) {
+  console.log('renderList', renderList)
+  console.log('virtualItems', virtualItems)
   const theme = useTheme()
   const stickyBackground =
     theme.palette.mode === 'dark' ? '#1e1f27' : 'var(--background-color)'

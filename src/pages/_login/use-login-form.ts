@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
 import { useAuth } from '@/providers/auth-context'
+import { ensureNodeProfile } from '@/services/auto-subscribe'
 import { showNotice } from '@/services/notice-service'
 
 import { CODE_COUNTDOWN_SEC, EMAIL_RE, PHONE_RE } from './constants'
@@ -108,6 +109,7 @@ export function useLoginForm() {
       if (!validateTarget()) return
 
       const useCode = tab === 'phone' && method === 'code'
+      let session: IAuthSession
       if (useCode) {
         if (!code.trim()) {
           setCodeError(t('auth.errors.codeEmpty'))
@@ -118,17 +120,27 @@ export function useLoginForm() {
           return
         }
         setCodeError('')
-        await loginByCode(target, code.trim())
+        session = await loginByCode(target, code.trim())
       } else {
         if (!password) {
           setPasswordError(t('auth.errors.passwordEmpty'))
           return
         }
         setPasswordError('')
-        await login(target, password)
+        session = await login(target, password)
       }
+
+      // 登录成功后用返回的 nodes 自动生成并激活订阅；订阅失败不阻挡进入主页
+      try {
+        await ensureNodeProfile(session)
+      } catch (subscribeErr: any) {
+        console.error('[login] 自动订阅失败:', subscribeErr)
+        showNotice.error(subscribeErr?.toString?.() ?? String(subscribeErr))
+      }
+
       navigate('/', { replace: true })
     } catch (err: any) {
+      console.error(err)
       showNotice.error(err?.toString?.() ?? String(err))
     } finally {
       setSubmitting(false)

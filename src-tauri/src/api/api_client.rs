@@ -23,47 +23,29 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 /// 错误响应回显的最大字节数。
 const ERROR_BODY_PREVIEW: usize = 512;
 
-/// 业务响应外层结构。
-///
-/// 兼容两类后端：
-/// - `{ code: 0|200, msg|message, data }`
-/// - `{ status: "success"|..., messgae|message|msg, data }`（后端拼写 `messgae`）
+/// 业务响应外层结构：`{ status: "success" | ..., message, data }`
+/// `status == "success"` 视为成功，其余一律失败。
 #[derive(Debug, Clone, Deserialize)]
 struct Envelope {
     #[serde(default)]
-    code: Option<i64>,
-    #[serde(default)]
     status: Option<String>,
     #[serde(default)]
-    msg: Option<String>,
-    #[serde(default)]
     message: Option<String>,
-    #[serde(default, rename = "messgae")]
-    messgae: Option<String>,
     #[serde(default)]
     data: Option<Value>,
 }
 
 impl Envelope {
     fn is_ok(&self) -> bool {
-        if let Some(s) = &self.status {
-            return s.eq_ignore_ascii_case("success") || s == "ok";
-        }
-        matches!(self.code, Some(0) | Some(200))
+        self.status.as_deref() == Some("success")
     }
 
     fn message(&self) -> String {
-        self.msg
+        self.message
             .as_deref()
-            .or(self.message.as_deref())
-            .or(self.messgae.as_deref())
             .filter(|s| !s.is_empty())
             .map(str::to_owned)
-            .unwrap_or_else(|| match (&self.status, self.code) {
-                (Some(s), _) => format!("请求失败 (status={s})"),
-                (_, Some(c)) => format!("请求失败 (code={c})"),
-                _ => "请求失败".to_owned(),
-            })
+            .unwrap_or_else(|| "请求失败".to_owned())
     }
 }
 
@@ -237,50 +219,25 @@ mod tests {
     }
 
     #[test]
-    fn envelope_ok_with_data() {
-        let v: String = parse(r#"{"code":0,"msg":"ok","data":"hi"}"#).unwrap();
-        assert_eq!(v, "hi");
-    }
-
-    #[test]
-    fn envelope_ok_200() {
-        let v: i32 = parse(r#"{"code":200,"data":42}"#).unwrap();
-        assert_eq!(v, 42);
-    }
-
-    #[test]
-    fn envelope_error_uses_msg() {
-        let err = parse::<Value>(r#"{"code":401,"msg":"unauthorized"}"#).unwrap_err();
-        assert_eq!(err.to_string(), "unauthorized");
-    }
-
-    #[test]
-    fn envelope_error_fallback_message_field() {
-        let err = parse::<Value>(r#"{"code":500,"message":"boom"}"#).unwrap_err();
-        assert_eq!(err.to_string(), "boom");
-    }
-
-    #[test]
-    fn envelope_error_default_when_empty() {
-        let err = parse::<Value>(r#"{"code":400}"#).unwrap_err();
-        assert_eq!(err.to_string(), "请求失败 (code=400)");
-    }
-
-    #[test]
-    fn envelope_status_success_with_typo_message() {
+    fn envelope_success_with_data() {
         #[derive(Deserialize)]
         struct Out {
             key: String,
         }
-        let v: Out =
-            parse(r#"{"status":"success","messgae":"短信发送成功","data":{"key":"2059860532254932993"}}"#).unwrap();
-        assert_eq!(v.key, "2059860532254932993");
+        let v: Out = parse(r#"{"status":"success","message":"ok","data":{"key":"abc"}}"#).unwrap();
+        assert_eq!(v.key, "abc");
     }
 
     #[test]
-    fn envelope_status_failure_uses_typo_message() {
-        let err = parse::<Value>(r#"{"status":"fail","messgae":"参数错误"}"#).unwrap_err();
-        assert_eq!(err.to_string(), "参数错误");
+    fn envelope_failure_uses_message() {
+        let err = parse::<Value>(r#"{"data":[],"message":"账号不存在","status":"fail"}"#).unwrap_err();
+        assert_eq!(err.to_string(), "账号不存在");
+    }
+
+    #[test]
+    fn envelope_failure_default_when_no_message() {
+        let err = parse::<Value>(r#"{"status":"fail"}"#).unwrap_err();
+        assert_eq!(err.to_string(), "请求失败");
     }
 
     #[test]

@@ -4,9 +4,9 @@ export interface AuthContextType {
   session: IAuthSession | null
   isLoading: boolean
   getSmsCode: (phone: string) => Promise<boolean>
-  login: (username: string, password: string) => Promise<void>
-  loginByCode: (phone: string, key: string) => Promise<void>
-  register: (params: IAuthRegister) => Promise<void>
+  login: (username: string, password: string) => Promise<IAuthSession>
+  loginByCode: (phone: string, key: string) => Promise<IAuthSession>
+  register: (params: IAuthRegister) => Promise<IAuthSession>
   logout: () => Promise<void>
 }
 

@@ -306,10 +306,38 @@ interface IProfilesConfig {
   items?: IProfileItem[]
 }
 
+interface INode {
+  name?: string
+  server?: string
+  server_port?: string
+  password?: string
+  method?: string
+  obfs?: string
+  obfsparam?: string
+  protocol?: string
+  protocolparam?: string
+  flags?: string
+  group?: string
+  vip_type?: string
+}
+
+/** 与后端 `AuthUserInfo` 对齐 */
 interface IAuthSession {
-  token: string
-  username: string
-  expires_at: number
+  username?: string
+  id?: number
+  Traffic?: string
+  all?: number
+  buy_link?: string
+  expire_in?: string
+  invite_code?: number
+  invite_url?: string
+  level?: number
+  link?: string
+  total?: number
+  vip_type?: string
+  vip_begin_time?: string
+  vip_end_time?: string
+  nodes?: INode[]
 }
 
 interface IVergeTestItem {

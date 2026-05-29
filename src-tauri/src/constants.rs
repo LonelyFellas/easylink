@@ -49,8 +49,8 @@ pub mod api {
         // pub const DEV: &str = "https://vpnapi.easylinkvpn.com/api";
         // pub const PROD: &str = "https://vpnapi.easylinkvpn.com/api";
         #[cfg(feature = "verge-dev")]
-        pub const DEV: &str = "http://localhost:3040/api";
+        pub const DEV: &str = "https://vpnapi.easylinkvpn.com/api";
         #[cfg(not(feature = "verge-dev"))]
-        pub const PROD: &str = "http://localhost:3040/api";
+        pub const PROD: &str = "https://vpnapi.easylinkvpn.com/api";
     }
 }
