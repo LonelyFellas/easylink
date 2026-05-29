@@ -35,10 +35,7 @@ pub fn build_mihomo_yaml(nodes: &[Node], _owner: &str) -> Result<String> {
     root.insert("external-controller".into(), "127.0.0.1:9090".into());
 
     root.insert("proxies".into(), Value::Sequence(proxies));
-    root.insert(
-        "proxy-groups".into(),
-        Value::Sequence(build_proxy_groups(&names)),
-    );
+    root.insert("proxy-groups".into(), Value::Sequence(build_proxy_groups(&names)));
     root.insert("rules".into(), Value::Sequence(build_rules()));
 
     Ok(serde_yaml_ng::to_string(&Value::Mapping(root))?)
@@ -75,10 +72,7 @@ fn build_proxies(nodes: &[Node]) -> Result<(Vec<Value>, Vec<String>)> {
         proxy.insert("type".into(), "ssr".into());
         proxy.insert("server".into(), server.into());
         proxy.insert("port".into(), port.into());
-        proxy.insert(
-            "password".into(),
-            node.password.clone().unwrap_or_default().into(),
-        );
+        proxy.insert("password".into(), node.password.clone().unwrap_or_default().into());
         proxy.insert(
             "cipher".into(),
             node.method.clone().unwrap_or_else(|| "none".into()).into(),
@@ -89,10 +83,7 @@ fn build_proxies(nodes: &[Node]) -> Result<(Vec<Value>, Vec<String>)> {
         );
         proxy.insert(
             "protocol".into(),
-            node.protocol
-                .clone()
-                .unwrap_or_else(|| "origin".into())
-                .into(),
+            node.protocol.clone().unwrap_or_else(|| "origin".into()).into(),
         );
         if let Some(v) = node.obfsparam.as_deref().filter(|s| !s.is_empty()) {
             proxy.insert("obfs-param".into(), v.to_owned().into());
@@ -194,10 +185,7 @@ mod tests {
         assert_eq!(first.get("type").unwrap().as_str(), Some("ssr"));
         assert_eq!(first.get("port").unwrap().as_u64(), Some(7184));
         assert_eq!(first.get("cipher").unwrap().as_str(), Some("none"));
-        assert_eq!(
-            first.get("protocol-param").unwrap().as_str(),
-            Some("77122:3DWZSm")
-        );
+        assert_eq!(first.get("protocol-param").unwrap().as_str(), Some("77122:3DWZSm"));
         // 空 obfsparam 不应出现
         assert!(first.get("obfs-param").is_none());
 
