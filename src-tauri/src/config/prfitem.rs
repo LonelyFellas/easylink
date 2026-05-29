@@ -178,7 +178,7 @@ impl PrfItem {
                 let name = item.name.clone().unwrap_or_else(|| "Local File".into());
                 let desc = item.desc.clone().unwrap_or_else(|| "".into());
                 let option = item.option.as_ref();
-                Self::from_local(name, desc, file_data, option).await
+                Self::from_local(item.uid.clone(), name, desc, file_data, option).await
             }
             typ => bail!("invalid profile item type \"{typ}\""),
         }
@@ -187,12 +187,16 @@ impl PrfItem {
     /// ## Local type
     /// create a new item from name/desc
     pub async fn from_local(
+        uid: Option<String>,
         name: String,
         desc: String,
         file_data: Option<String>,
         option: Option<&PrfOption>,
     ) -> Result<Self> {
-        let uid = help::get_uid("L").into();
+        // 调用方指定 uid 时复用它（让自动订阅复用同一份 profile）；否则生成随机 uid
+        let uid: String = uid
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| help::get_uid("L").into());
         let file = format!("{uid}.yaml").into();
         let opt_ref = option.as_ref();
         let update_interval = opt_ref.and_then(|o| o.update_interval);

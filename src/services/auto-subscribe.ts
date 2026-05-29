@@ -3,6 +3,7 @@ import { selectNodeForGroup } from 'tauri-plugin-mihomo-api'
 import {
   authBuildProfileYaml,
   createProfile,
+  deleteProfile,
   getProfiles,
   patchProfilesConfig,
   saveProfileFile,
@@ -26,7 +27,8 @@ export async function ensureNodeProfile(session: IAuthSession): Promise<void> {
   const yaml = await authBuildProfileYaml(nodes)
 
   const profiles = await getProfiles()
-  const exists = profiles.items?.some((it) => it.uid === AUTO_PROFILE_UID)
+  const items = profiles.items ?? []
+  const exists = items.some((it) => it.uid === AUTO_PROFILE_UID)
 
   if (exists) {
     const ok = await saveProfileFile(AUTO_PROFILE_UID, yaml)
@@ -55,6 +57,20 @@ export async function ensureNodeProfile(session: IAuthSession): Promise<void> {
     } catch (e) {
       // 选节点失败不影响订阅本身，仅记录
       console.warn('[auto-subscribe] 选首节点失败:', e)
+    }
+  }
+
+  // 清理历史遗留的重复订阅：早期版本因后端忽略指定 uid，每次登录都会新建一份。
+  // 此处激活规范 uid 后，删除其余同名的旧自动订阅。
+  const stale = items.filter(
+    (it) => it.name === AUTO_PROFILE_NAME && it.uid !== AUTO_PROFILE_UID,
+  )
+  for (const it of stale) {
+    if (!it.uid) continue
+    try {
+      await deleteProfile(it.uid)
+    } catch (e) {
+      console.warn('[auto-subscribe] 清理旧订阅失败:', it.uid, e)
     }
   }
 }
