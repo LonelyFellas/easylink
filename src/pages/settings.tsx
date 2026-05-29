@@ -4,7 +4,6 @@ import { useLockFn } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 
 import { BasePage } from '@/components/base'
-import SettingAccount from '@/components/setting/setting-account'
 import SettingClash from '@/components/setting/setting-clash'
 import SettingSystem from '@/components/setting/setting-system'
 import SettingVergeAdvanced from '@/components/setting/setting-verge-advanced'
@@ -89,15 +88,6 @@ const SettingPage = () => {
           </Box>
         </Grid>
         <Grid size={6}>
-          <Box
-            sx={{
-              borderRadius: 2,
-              marginBottom: 1.5,
-              backgroundColor: isDark ? '#282a36' : '#ffffff',
-            }}
-          >
-            <SettingAccount onError={onError} />
-          </Box>
           <Box
             sx={{
               borderRadius: 2,

@@ -1,7 +1,9 @@
 import {
+  AccountCircleOutlined,
   DnsOutlined,
   HelpOutlineRounded,
   HistoryEduOutlined,
+  LogoutRounded,
   RouterOutlined,
   SettingsOutlined,
   SpeedOutlined,
@@ -18,6 +20,9 @@ import {
   FormGroup,
   Grid,
   IconButton,
+  ListItemIcon,
+  Menu,
+  MenuItem,
   Skeleton,
   Tooltip,
 } from '@mui/material'
@@ -31,10 +36,14 @@ import { CurrentProxyCard } from '@/components/home/current-proxy-card'
 import { EnhancedCard } from '@/components/home/enhanced-card'
 import { EnhancedTrafficStats } from '@/components/home/enhanced-traffic-stats'
 import { HomeProfileCard } from '@/components/home/home-profile-card'
+import { LoginStatusCard } from '@/components/home/login-status-card'
+import { MembershipCard } from '@/components/home/membership-card'
 import { ProxyTunCard } from '@/components/home/proxy-tun-card'
 import { useProfiles } from '@/hooks/use-profiles'
 import { useVerge } from '@/hooks/use-verge'
+import { useAuth } from '@/providers/auth-context'
 import { entry_lightweight_mode, openWebUrl } from '@/services/cmds'
+import { showNotice } from '@/services/notice-service'
 
 const LazyTestCard = lazy(() =>
   import('@/components/home/test-card').then((module) => ({
@@ -212,6 +221,18 @@ const HomePage = () => {
   const { t } = useTranslation()
   const { verge } = useVerge()
   const { current, mutateProfiles } = useProfiles()
+  const { logout } = useAuth()
+
+  // 右上角账号菜单 + 退出登录
+  const [accountAnchor, setAccountAnchor] = useState<null | HTMLElement>(null)
+  const handleLogout = useLockFn(async () => {
+    setAccountAnchor(null)
+    try {
+      await logout()
+    } catch (err) {
+      showNotice.error(err)
+    }
+  })
 
   // 设置弹窗的状态
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -387,10 +408,40 @@ const HomePage = () => {
               <SettingsOutlined />
             </IconButton>
           </Tooltip>
+          <Tooltip title="账号" arrow>
+            <IconButton
+              onClick={(e) => setAccountAnchor(e.currentTarget)}
+              size="small"
+              color="inherit"
+            >
+              <AccountCircleOutlined />
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={accountAnchor}
+            open={Boolean(accountAnchor)}
+            onClose={() => setAccountAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutRounded fontSize="small" color="error" />
+              </ListItemIcon>
+              退出登录
+            </MenuItem>
+          </Menu>
         </Box>
       }
     >
       <Grid container spacing={1.5} columns={{ xs: 6, sm: 6, md: 12 }}>
+        <Grid size={6}>
+          <LoginStatusCard />
+        </Grid>
+        <Grid size={6}>
+          <MembershipCard />
+        </Grid>
+
         {criticalCards}
 
         {nonCriticalCards}
