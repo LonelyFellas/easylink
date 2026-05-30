@@ -32,7 +32,7 @@ export const useCurrentProxy = () => {
     let primaryGroupName = 'GLOBAL'
     let currentName = global?.now
 
-    // 在规则模式下，寻找主要代理组（通常是第一个或者名字包含特定关键词的组）
+    // 在智能模式下，寻找主要代理组（通常是第一个或者名字包含特定关键词的组）
     if (currentMode === 'rule' && groups.length > 0) {
       // 查找主要的代理组（优先级：包含关键词 > 第一个非GLOBAL组）
       const primaryKeywords = [

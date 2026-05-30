@@ -36,11 +36,11 @@ service:
   adminUninstallPrompt: 卸载 Easy Link 服务需要管理员权限
 tray:
   dashboard: 仪表板
-  ruleMode: 规则模式
+  ruleMode: 智能模式
   globalMode: 全局模式
   directMode: 直连模式
   outboundModes: 出站模式
-  rule: 规则
+  rule: 智能模式
   direct: 直连
   global: 全局
   profiles: 订阅

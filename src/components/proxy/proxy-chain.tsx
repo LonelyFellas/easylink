@@ -390,7 +390,7 @@ export const ProxyChain = ({
 
       // 根据模式确定使用的代理组名称
       if (mode !== 'global' && !selectedGroup) {
-        throw new Error('规则模式下必须选择代理组')
+        throw new Error('智能模式下必须选择代理组')
       }
 
       const targetGroup = mode === 'global' ? 'GLOBAL' : selectedGroup

@@ -780,7 +780,7 @@ export const CurrentProxyCard = () => {
         }
       })
     } else {
-      // 规则模式
+      // 智能模式
       const group = state.proxyData.groups.find((g) => g.name === groupName)
       if (group) {
         group.all.forEach((name: string) => {
@@ -901,7 +901,7 @@ export const CurrentProxyCard = () => {
       return sortWithLatency(options)
     }
 
-    // 规则模式
+    // 智能模式
     const group = state.selection.group
       ? state.proxyData.groups.find((g) => g.name === state.selection.group)
       : null

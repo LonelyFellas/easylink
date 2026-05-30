@@ -188,7 +188,7 @@ export const useRenderList = (
 
     // 链式代理模式下，显示代理组和其节点
     if (isChainMode && runtimeConfig && mode === 'rule') {
-      // 使用正常的规则模式代理组
+      // 使用正常的智能模式代理组
       const allGroups = proxiesData.groups.length
         ? proxiesData.groups
         : [proxiesData.global!]

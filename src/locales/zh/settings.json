@@ -598,7 +598,7 @@
       },
       "title": "热键设置",
       "functions": {
-        "rule": "规则模式",
+        "rule": "智能模式",
         "global": "全局模式",
         "openOrCloseDashboard": "打开/关闭面板",
         "toggleSystemProxy": "打开/关闭系统代理",

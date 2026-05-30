@@ -846,14 +846,14 @@ async fn create_tray_menu(
         _ => {}
     }
 
+    // 二次开发：隐藏「打开目录」「更多」两个子菜单（仍构建以复用其子项，不加入托盘菜单）
+    let _ = (&open_dir, &more);
     menu_items.extend_from_slice(&[
         separator,
         system_proxy as &dyn IsMenuItem<Wry>,
         tun_mode as &dyn IsMenuItem<Wry>,
         separator,
         lightweight_mode as &dyn IsMenuItem<Wry>,
-        open_dir as &dyn IsMenuItem<Wry>,
-        more as &dyn IsMenuItem<Wry>,
         separator,
         quit as &dyn IsMenuItem<Wry>,
     ]);

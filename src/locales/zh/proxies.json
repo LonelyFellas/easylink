@@ -1,7 +1,7 @@
 {
   "page": {
     "modes": {
-      "rule": "规则",
+      "rule": "智能模式",
       "global": "全局",
       "direct": "直连"
     },
