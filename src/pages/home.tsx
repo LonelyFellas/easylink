@@ -1,11 +1,8 @@
 import {
   AccountCircleOutlined,
   DnsOutlined,
-  HelpOutlineRounded,
-  HistoryEduOutlined,
   LogoutRounded,
   RouterOutlined,
-  SettingsOutlined,
   SpeedOutlined,
 } from '@mui/icons-material'
 import {
@@ -38,9 +35,9 @@ import { EnhancedTrafficStats } from '@/components/home/enhanced-traffic-stats'
 import { LoginStatusCard } from '@/components/home/login-status-card'
 import { MembershipCard } from '@/components/home/membership-card'
 import { ProxyTunCard } from '@/components/home/proxy-tun-card'
+import { QuickSettingsMenu } from '@/components/home/quick-settings-menu'
 import { useVerge } from '@/hooks/use-verge'
 import { useAuth } from '@/providers/auth-context'
-import { entry_lightweight_mode, openWebUrl } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
 
 const LazyTestCard = lazy(() =>
@@ -268,16 +265,6 @@ const HomePage = () => {
 
   const effectiveHomeCards = pendingLocalCards ?? remoteHomeCards
 
-  // 文档链接函数
-  const toGithubDoc = useLockFn(() => {
-    return openWebUrl('https://clash-verge-rev.github.io/index.html')
-  })
-
-  // 新增：打开设置弹窗
-  const openSettings = useCallback(() => {
-    setSettingsOpen(true)
-  }, [])
-
   const renderCard = useCallback(
     (cardKey: string, component: React.ReactNode, size: number = 6) => {
       if (!effectiveHomeCards[cardKey]) return null
@@ -371,25 +358,7 @@ const HomePage = () => {
       contentStyle={{ padding: 2 }}
       header={
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Tooltip title={t('home.page.tooltips.lightweightMode')} arrow>
-            <IconButton
-              onClick={async () => await entry_lightweight_mode()}
-              size="small"
-              color="inherit"
-            >
-              <HistoryEduOutlined />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t('home.page.tooltips.manual')} arrow>
-            <IconButton onClick={toGithubDoc} size="small" color="inherit">
-              <HelpOutlineRounded />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t('home.page.tooltips.settings')} arrow>
-            <IconButton onClick={openSettings} size="small" color="inherit">
-              <SettingsOutlined />
-            </IconButton>
-          </Tooltip>
+          <QuickSettingsMenu />
           <Tooltip title="账号" arrow>
             <IconButton
               onClick={(e) => setAccountAnchor(e.currentTarget)}

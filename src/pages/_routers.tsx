@@ -92,6 +92,7 @@ export const SIDEBAR_HIDDEN_PATHS = new Set([
   '/rules',
   '/logs',
   '/unlock',
+  '/settings',
 ])
 export const sidebarNavItems = navItems.filter(
   (item) => !SIDEBAR_HIDDEN_PATHS.has(item.path),
