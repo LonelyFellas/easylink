@@ -33,6 +33,16 @@ export async function authGetSession() {
   return invoke<IAuthSession | null>('auth_get_session')
 }
 
+/** 记住当前登录用户最后手动选择的节点（按 user id 绑定，后端持久化） */
+export async function authCacheNode(node: string) {
+  return invoke<void>('auth_cache_node', { node })
+}
+
+/** 读取当前登录用户上次选择的节点，无则返回 null */
+export async function authGetCachedNode() {
+  return invoke<string | null>('auth_get_cached_node')
+}
+
 export async function getVerifyCode(phone: string) {
   return invoke<boolean>('get_verify_code', { phone })
 }

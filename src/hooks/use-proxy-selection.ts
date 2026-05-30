@@ -7,7 +7,8 @@ import {
 
 import { useProfiles } from '@/hooks/use-profiles'
 import { useVerge } from '@/hooks/use-verge'
-import { syncTrayProxySelection } from '@/services/cmds'
+import { AUTO_PROXY_GROUP } from '@/services/auto-subscribe'
+import { authCacheNode, syncTrayProxySelection } from '@/services/cmds'
 import { debugLog } from '@/utils/debug'
 
 // 缓存连接清理
@@ -67,7 +68,17 @@ export const useProxySelection = (options: ProxySelectionOptions = {}) => {
 
   const persistSelection = useCallback(
     (groupName: string, proxyName: string, skipConfigSave: boolean) => {
-      if (!current || skipConfigSave) return
+      if (skipConfigSave) return
+
+      // 记住本用户在自动订阅默认组里的选择，登录后据此恢复。
+      // 缓存按 user id 绑定、存在 Rust 后端（id 由后端从会话推导）。
+      if (groupName === AUTO_PROXY_GROUP) {
+        authCacheNode(proxyName).catch((error) => {
+          console.warn('[ProxySelection] 缓存节点失败:', error)
+        })
+      }
+
+      if (!current) return
 
       const selected = current.selected ? [...current.selected] : []
       const index = selected.findIndex((item) => item.name === groupName)

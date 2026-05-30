@@ -19,11 +19,9 @@ const DEFAULT_PROXY_GROUP: &str = "PROXY";
 
 /// 用一组节点拼一份完整 mihomo YAML（含 proxies + proxy-groups + rules）。
 /// `owner` 仅用于注释/将来扩展，目前不影响输出结构。
+/// nodes 为空（如账号过期未下发节点）时仍生成合法 profile：proxies 为空、
+/// PROXY 组只含 DIRECT，等同全程直连，避免沿用上一个用户的旧节点。
 pub fn build_mihomo_yaml(nodes: &[Node], _owner: &str) -> Result<String> {
-    if nodes.is_empty() {
-        return Err(anyhow!("nodes 为空，无法生成 profile"));
-    }
-
     let (proxies, names) = build_proxies(nodes)?;
 
     let mut root = Mapping::new();
@@ -160,8 +158,20 @@ mod tests {
     }
 
     #[test]
-    fn empty_nodes_returns_error() {
-        assert!(build_mihomo_yaml(&[], "u").is_err());
+    fn empty_nodes_builds_direct_only() {
+        // 空节点应生成合法的「仅 DIRECT」profile，而不是报错
+        let yaml = build_mihomo_yaml(&[], "u").unwrap();
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&yaml).unwrap();
+        let root = parsed.as_mapping().unwrap();
+
+        let proxies = root.get("proxies").unwrap().as_sequence().unwrap();
+        assert!(proxies.is_empty());
+
+        let groups = root.get("proxy-groups").unwrap().as_sequence().unwrap();
+        let group = groups[0].as_mapping().unwrap();
+        let group_proxies = group.get("proxies").unwrap().as_sequence().unwrap();
+        assert_eq!(group_proxies.len(), 1);
+        assert_eq!(group_proxies[0].as_str(), Some("DIRECT"));
     }
 
     #[test]

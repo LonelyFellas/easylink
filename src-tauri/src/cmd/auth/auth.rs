@@ -5,6 +5,7 @@ use crate::config::{decrypt_data, encrypt_data};
 use crate::utils::dirs;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// 设备指纹：machine-uid → SHA256 → 小写 hex
@@ -254,6 +255,9 @@ struct AuthStore {
     users: Vec<AuthUser>,
     #[serde(default)]
     session: Option<AuthUserInfo>,
+    /// 用户 id → 上次手动选择的节点名。跨登出存活，供再次登录恢复。
+    #[serde(default)]
+    node_cache: HashMap<String, String>,
 }
 
 fn auth_path() -> Result<PathBuf, String> {
@@ -420,4 +424,25 @@ pub fn auth_logout() -> CmdResult {
 #[tauri::command]
 pub fn auth_get_session() -> Option<AuthUserInfo> {
     read_store().session
+}
+
+/// 记住当前登录用户最后手动选择的节点（按 user id 绑定，跨登出存活）。
+/// user id 取自已持久化的 session，未登录则忽略。
+#[tauri::command]
+pub fn auth_cache_node(node: String) -> CmdResult {
+    let mut store = read_store();
+    let Some(id) = store.session.as_ref().and_then(|s| s.id) else {
+        return Ok(());
+    };
+    store.node_cache.insert(id.to_string(), node);
+    write_store(&store)?;
+    Ok(())
+}
+
+/// 读取当前登录用户上次选择的节点，无则返回 None。
+#[tauri::command]
+pub fn auth_get_cached_node() -> Option<String> {
+    let store = read_store();
+    let id = store.session.as_ref().and_then(|s| s.id)?;
+    store.node_cache.get(&id.to_string()).cloned()
 }

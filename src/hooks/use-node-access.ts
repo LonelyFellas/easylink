@@ -1,11 +1,7 @@
 import { useCallback, useMemo } from 'react'
 
 import { useAuth } from '@/providers/auth-context'
-
-const TIER_RANK: Record<string, number> = { vip: 1, svip: 2 }
-
-const rankOf = (tier?: string) =>
-  tier ? (TIER_RANK[tier.toLowerCase()] ?? 0) : 0
+import { rankOf } from '@/utils/tier'
 
 /**
  * 根据登录会话里的 nodes(vip_type) 与当前用户身份，判断某个节点是否“超出权限”。

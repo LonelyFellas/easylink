@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
+import { useAppRefreshers } from '@/providers/app-data-context'
 import { useAuth } from '@/providers/auth-context'
 import { ensureNodeProfile } from '@/services/auto-subscribe'
 import { showNotice } from '@/services/notice-service'
@@ -16,6 +17,7 @@ export function useLoginForm() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { login, loginByCode, getSmsCode } = useAuth()
+  const { refreshAll } = useAppRefreshers()
 
   // tab / 方式
   const [tab, setTab] = useState<LoginTab>('phone')
@@ -136,6 +138,14 @@ export function useLoginForm() {
       } catch (subscribeErr: any) {
         console.error('[login] 自动订阅失败:', subscribeErr)
         showNotice.error(subscribeErr?.toString?.() ?? String(subscribeErr))
+      }
+
+      // 刷新共享的代理/配置缓存：首页卡片不像代理页那样轮询，
+      // 切换用户后必须主动刷新，否则首页仍显示上一个用户的节点。
+      try {
+        await refreshAll()
+      } catch (refreshErr) {
+        console.warn('[login] 刷新代理数据失败:', refreshErr)
       }
 
       navigate('/', { replace: true })

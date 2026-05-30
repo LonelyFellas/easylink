@@ -1,7 +1,10 @@
 import { selectNodeForGroup } from 'tauri-plugin-mihomo-api'
 
+import { rankOf } from '@/utils/tier'
+
 import {
   authBuildProfileYaml,
+  authGetCachedNode,
   createProfile,
   deleteProfile,
   getProfiles,
@@ -12,17 +15,42 @@ import {
 /** 固定 uid 让每次登录复用同一份 profile，避免每次都新建一条 */
 const AUTO_PROFILE_UID = 'easylink_auto'
 const AUTO_PROFILE_NAME = 'EasyLink Auto'
-const DEFAULT_GROUP = 'PROXY'
+/** 自动订阅 profile 的默认代理组名（与后端 node_profile.rs build_proxy_groups 对齐） */
+export const AUTO_PROXY_GROUP = 'PROXY'
+
+/** 复刻后端 node_profile.rs 的同名去重，得到 mihomo 里真实的代理名列表。 */
+function buildProxyNames(nodes: INode[]): string[] {
+  const seen = new Map<string, number>()
+  return nodes.map((node, idx) => {
+    const raw = node.name && node.name.length > 0 ? node.name : `node-${idx}`
+    const n = (seen.get(raw) ?? 0) + 1
+    seen.set(raw, n)
+    return n === 1 ? raw : `${raw} #${n}`
+  })
+}
 
 /**
- * 登录后用返回的 nodes 生成 mihomo profile，写盘 → 激活 → 选首节点。
+ * 缓存节点失效时的逐级回退：在「等级 ≤ 用户身份」的节点里取最高档的第一个
+ * （svip→vip→普通），都没有返回 null。返回值为 profile 里的去重名。
+ */
+function pickByTier(nodes: INode[], userTier?: string | null): string | null {
+  const names = buildProxyNames(nodes)
+  const userRank = rankOf(userTier)
+  for (let rank = userRank; rank >= 0; rank -= 1) {
+    const idx = nodes.findIndex((node) => rankOf(node.vip_type) === rank)
+    if (idx >= 0) return names[idx]
+  }
+  return null
+}
+
+/**
+ * 登录后用返回的 nodes 生成 mihomo profile，写盘 → 激活 → 恢复本用户上次选择的节点。
  * 任一步失败抛错；调用方负责 try/catch 并提示用户。
  */
 export async function ensureNodeProfile(session: IAuthSession): Promise<void> {
+  // nodes 为空（如账号过期）也要重新生成 profile：后端会产出「仅 DIRECT」配置，
+  // 借此清掉上一个用户的旧节点，并在下方回退到 DIRECT 直连。
   const nodes = session.nodes ?? []
-  if (!nodes.length) {
-    throw new Error('登录成功但未返回任何节点')
-  }
 
   const yaml = await authBuildProfileYaml(nodes)
 
@@ -50,14 +78,25 @@ export async function ensureNodeProfile(session: IAuthSession): Promise<void> {
   // mihomo reload 是异步的，等一小段时间再选节点
   await new Promise((resolve) => setTimeout(resolve, 300))
 
-  const firstName = nodes[0]?.name
-  if (firstName) {
-    try {
-      await selectNodeForGroup(DEFAULT_GROUP, firstName)
-    } catch (e) {
-      // 选节点失败不影响订阅本身，仅记录
-      console.warn('[auto-subscribe] 选首节点失败:', e)
-    }
+  // 按 user id 绑定的缓存恢复默认节点（缓存在 Rust 后端）：
+  // - 无缓存（首次登录）→ DIRECT 直连，不自动订阅节点；
+  // - 有缓存且节点仍在 → 切回该节点；
+  // - 有缓存但节点已没了 → 逐级回退（svip→vip→普通），都没有 → DIRECT。
+  const proxyNames = buildProxyNames(nodes)
+  const cached = await authGetCachedNode()
+  let target: string
+  if (cached == null) {
+    target = 'DIRECT'
+  } else if (cached === 'DIRECT' || proxyNames.includes(cached)) {
+    target = cached
+  } else {
+    target = pickByTier(nodes, session.vip_type) ?? 'DIRECT'
+  }
+  try {
+    await selectNodeForGroup(AUTO_PROXY_GROUP, target)
+  } catch (e) {
+    // 选节点失败不影响订阅本身，仅记录
+    console.warn('[auto-subscribe] 选默认节点失败:', target, e)
   }
 
   // 清理历史遗留的重复订阅：早期版本因后端忽略指定 uid，每次登录都会新建一份。

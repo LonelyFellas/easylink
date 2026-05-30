@@ -7,6 +7,7 @@ import {
   authLogout,
   authRegister,
   getVerifyCode,
+  patchVergeConfig,
 } from '@/services/cmds'
 
 import { AuthContext } from './auth-context'
@@ -51,6 +52,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   const logout = useCallback(async () => {
+    // 退出登录时自动关闭代理：关系统代理 + 关 TUN，避免登出后仍走客户端代理
+    try {
+      await patchVergeConfig({
+        enable_system_proxy: false,
+        enable_tun_mode: false,
+      })
+    } catch (e) {
+      console.warn('[AuthProvider] 退出时关闭代理失败:', e)
+    }
     await authLogout()
     setSession(null)
   }, [])
