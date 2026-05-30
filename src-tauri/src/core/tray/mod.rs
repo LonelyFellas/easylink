@@ -771,7 +771,8 @@ async fn create_tray_menu(
 
     let open_core_log = &MenuItem::with_id(app_handle, MenuIds::CORE_LOG, &texts.core_log, true, None::<&str>)?;
 
-    let open_dir = &Submenu::with_id_and_items(
+    // 二次开发：隐藏，仅构建以复用子项，不加入托盘菜单
+    let _open_dir = &Submenu::with_id_and_items(
         app_handle,
         MenuIds::OPEN_DIR,
         &texts.open_dir,
@@ -797,7 +798,8 @@ async fn create_tray_menu(
         None::<&str>,
     )?;
 
-    let more = &Submenu::with_id_and_items(
+    // 二次开发：隐藏，仅构建以复用子项，不加入托盘菜单
+    let _more = &Submenu::with_id_and_items(
         app_handle,
         MenuIds::MORE,
         &texts.more,
@@ -846,8 +848,7 @@ async fn create_tray_menu(
         _ => {}
     }
 
-    // 二次开发：隐藏「打开目录」「更多」两个子菜单（仍构建以复用其子项，不加入托盘菜单）
-    let _ = (&open_dir, &more);
+    // 二次开发：隐藏「打开目录」「更多」两个子菜单，不加入托盘菜单（见上方 _open_dir/_more）
     menu_items.extend_from_slice(&[
         separator,
         system_proxy as &dyn IsMenuItem<Wry>,
