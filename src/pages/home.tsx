@@ -35,11 +35,9 @@ import { ClashModeCard } from '@/components/home/clash-mode-card'
 import { CurrentProxyCard } from '@/components/home/current-proxy-card'
 import { EnhancedCard } from '@/components/home/enhanced-card'
 import { EnhancedTrafficStats } from '@/components/home/enhanced-traffic-stats'
-import { HomeProfileCard } from '@/components/home/home-profile-card'
 import { LoginStatusCard } from '@/components/home/login-status-card'
 import { MembershipCard } from '@/components/home/membership-card'
 import { ProxyTunCard } from '@/components/home/proxy-tun-card'
-import { useProfiles } from '@/hooks/use-profiles'
 import { useVerge } from '@/hooks/use-verge'
 import { useAuth } from '@/providers/auth-context'
 import { entry_lightweight_mode, openWebUrl } from '@/services/cmds'
@@ -68,7 +66,6 @@ const LazySystemInfoCard = lazy(() =>
 
 // 定义首页卡片设置接口
 interface HomeCardsSettings {
-  profile: boolean
   proxy: boolean
   network: boolean
   mode: boolean
@@ -124,15 +121,6 @@ const HomeSettingsDialog = ({
       <DialogTitle>{t('home.page.settings.title')}</DialogTitle>
       <DialogContent>
         <FormGroup>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.profile || false}
-                onChange={() => handleToggle('profile')}
-              />
-            }
-            label={t('home.page.settings.cards.profile')}
-          />
           <FormControlLabel
             control={
               <Checkbox
@@ -220,7 +208,6 @@ const HomeSettingsDialog = ({
 const HomePage = () => {
   const { t } = useTranslation()
   const { verge } = useVerge()
-  const { current, mutateProfiles } = useProfiles()
   const { logout } = useAuth()
 
   // 右上角账号菜单 + 退出登录
@@ -245,7 +232,6 @@ const HomePage = () => {
   const defaultCards = useMemo<HomeCardsSettings>(
     () => ({
       info: false,
-      profile: true,
       proxy: true,
       network: true,
       mode: true,
@@ -307,15 +293,11 @@ const HomePage = () => {
 
   const criticalCards = useMemo(
     () => [
-      renderCard(
-        'profile',
-        <HomeProfileCard current={current} onProfileUpdated={mutateProfiles} />,
-      ),
       renderCard('proxy', <CurrentProxyCard />),
       renderCard('network', <NetworkSettingsCard />),
       renderCard('mode', <ClashModeEnhancedCard />),
     ],
-    [current, mutateProfiles, renderCard],
+    [renderCard],
   )
 
   // 新增：保存设置时用requestIdleCallback/setTimeout

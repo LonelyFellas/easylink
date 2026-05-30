@@ -80,11 +80,19 @@ export const navItems = [
 ]
 
 /**
- * 左侧栏与「启动页」下拉里展示的导航项。
- * 隐藏「订阅/Profiles」入口（防止用户自定义脚本），但 /profile 路由仍保留，
- * 仍可从首页「EasyLink Auto」卡片进入。
+ * 左侧栏与「启动页」下拉里隐藏的导航项（路由仍保留，可由首页按钮等其他入口进入）。
+ * - 订阅/Profiles：防止用户自定义脚本
+ * - 代理/连接/规则/日志/测试：精简侧边栏，只保留首页与设置
+ * 注：对应路由仍在 router 中注册，首页「代理 >」「EasyLink Auto 订阅」等按钮照常可跳转。
  */
-export const SIDEBAR_HIDDEN_PATHS = new Set(['/profile'])
+export const SIDEBAR_HIDDEN_PATHS = new Set([
+  '/profile',
+  '/proxies',
+  '/connections',
+  '/rules',
+  '/logs',
+  '/unlock',
+])
 export const sidebarNavItems = navItems.filter(
   (item) => !SIDEBAR_HIDDEN_PATHS.has(item.path),
 )
