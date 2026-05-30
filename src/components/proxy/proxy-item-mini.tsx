@@ -35,6 +35,7 @@ export const ProxyItemMini = (props: Props) => {
     <ListItemButton
       dense
       selected={selected}
+      disabled={locked}
       onClick={() => onClick?.(proxy.name)}
       sx={[
         {

@@ -61,6 +61,7 @@ export const ProxyItem = (props: Props) => {
       <ListItemButton
         dense
         selected={selected}
+        disabled={locked}
         onClick={() => onClick?.(proxy.name)}
         sx={[
           { borderRadius: 1 },
