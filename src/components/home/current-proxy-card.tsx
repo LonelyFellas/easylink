@@ -489,41 +489,6 @@ export const CurrentProxyCard = () => {
     }
   }, [])
 
-  // 处理代理组变更
-  const handleGroupChange = useCallback(
-    (event: SelectChangeEvent<string>) => {
-      if (isGlobalMode || isDirectMode) return
-
-      const newGroup = event.target.value
-
-      writeProfileScopedItem(STORAGE_KEY_GROUP, newGroup)
-
-      setState((prev) => {
-        const group = prev.proxyData.groups.find(
-          (g: { name: string }) => g.name === newGroup,
-        )
-        if (group) {
-          return {
-            ...prev,
-            selection: {
-              group: newGroup,
-              proxy: group.now,
-            },
-            displayProxy: prev.proxyData.records[group.now] || null,
-          }
-        }
-        return {
-          ...prev,
-          selection: {
-            ...prev.selection,
-            group: newGroup,
-          },
-        }
-      })
-    },
-    [isGlobalMode, isDirectMode, writeProfileScopedItem],
-  )
-
   // 处理代理节点变更
   const handleProxyChange = useCallback(
     (event: SelectChangeEvent<string>) => {
@@ -1077,31 +1042,6 @@ export const CurrentProxyCard = () => {
               />
             )}
           </Box>
-          {/* 代理组选择器 */}
-          <FormControl
-            fullWidth
-            variant="outlined"
-            size="small"
-            sx={{ mb: 1.5 }}
-          >
-            <InputLabel id="proxy-group-select-label">
-              {t('home.components.currentProxy.labels.group')}
-            </InputLabel>
-            <Select
-              labelId="proxy-group-select-label"
-              value={state.selection.group}
-              onChange={handleGroupChange}
-              label={t('home.components.currentProxy.labels.group')}
-              disabled={isGlobalMode || isDirectMode}
-            >
-              {state.proxyData.groups.map((group) => (
-                <MenuItem key={group.name} value={group.name}>
-                  {group.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
           {/* 代理节点选择器 */}
           <FormControl fullWidth variant="outlined" size="small" sx={{ mb: 0 }}>
             <InputLabel id="proxy-select-label">
