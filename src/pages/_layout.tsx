@@ -50,7 +50,7 @@ import {
   useNavMenuOrder,
 } from './_layout/hooks'
 import { handleNoticeMessage } from './_layout/utils'
-import { navItems } from './_routers'
+import { navItems, sidebarNavItems } from './_routers'
 import LogsPage from './logs'
 
 import 'dayjs/locale/ru'
@@ -166,7 +166,7 @@ const Layout = () => {
     resetMenuOrder,
   } = useNavMenuOrder({
     enabled: menuUnlocked,
-    items: navItems,
+    items: sidebarNavItems,
     storedOrder: verge?.menu_order,
     onOptimisticUpdate: handleMenuOrderOptimisticUpdate,
     onPersist: handleMenuOrderPersist,

@@ -79,6 +79,16 @@ export const navItems = [
   },
 ]
 
+/**
+ * 左侧栏与「启动页」下拉里展示的导航项。
+ * 隐藏「订阅/Profiles」入口（防止用户自定义脚本），但 /profile 路由仍保留，
+ * 仍可从首页「EasyLink Auto」卡片进入。
+ */
+export const SIDEBAR_HIDDEN_PATHS = new Set(['/profile'])
+export const sidebarNavItems = navItems.filter(
+  (item) => !SIDEBAR_HIDDEN_PATHS.has(item.path),
+)
+
 export const router = createBrowserRouter([
   {
     path: '/login',
