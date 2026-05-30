@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router'
 import { useAppRefreshers } from '@/providers/app-data-context'
 import { useAuth } from '@/providers/auth-context'
 import { ensureNodeProfile } from '@/services/auto-subscribe'
+import { patchVergeConfig } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
 
 import { CODE_COUNTDOWN_SEC, EMAIL_RE, PHONE_RE } from './constants'
@@ -138,6 +139,13 @@ export function useLoginForm() {
       } catch (subscribeErr: any) {
         console.error('[login] 自动订阅失败:', subscribeErr)
         showNotice.error(subscribeErr?.toString?.() ?? String(subscribeErr))
+      }
+
+      // 登录后自动打开系统代理（与登出时关闭系统代理 + TUN 对应）
+      try {
+        await patchVergeConfig({ enable_system_proxy: true })
+      } catch (proxyErr) {
+        console.warn('[login] 打开系统代理失败:', proxyErr)
       }
 
       // 刷新共享的代理/配置缓存：首页卡片不像代理页那样轮询，
