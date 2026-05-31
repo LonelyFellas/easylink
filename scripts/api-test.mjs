@@ -2,13 +2,13 @@
 
 import axios from 'axios'
 
-const baseUrl = 'https://vpnapi.easylinkvpn.com'
+const baseUrl = 'https://vdev.dv333.online/'
 
 // 短信验证码
-// const response1 = await axios.post(`${baseUrl}/api/sendsms`, {
-//   phone: '15257294120',
-// })
-// console.log(response1.data)
+const response1 = await axios.post(`${baseUrl}/api/sendsms`, {
+  phone: '15257294120',
+})
+console.log(response1.data)
 
 // 注册
 // const response2 = await axios.post(`${baseUrl}/api/register`, {
@@ -21,7 +21,7 @@ const baseUrl = 'https://vpnapi.easylinkvpn.com'
 // console.log(response2.data)
 
 // 用户详情
-const response3 = await axios.post(`${baseUrl}/api/getUserInfo`, {
-  UserID: '385426s',
-})
-console.log(response3.data)
+// const response3 = await axios.post(`${baseUrl}/api/getUserInfo`, {
+//   UserID: '385426s',
+// })
+// console.log(response3.data)

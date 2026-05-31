@@ -86,11 +86,7 @@ export const RegisterForm = ({ onSwitchToLogin }: Props) => {
         fullWidth
         size="medium"
         type="password"
-        label={
-          f.tab === 'phone'
-            ? `${t('auth.password')} (${t('auth.optional')})`
-            : t('auth.password')
-        }
+        label={t('auth.password')}
         value={f.password}
         onChange={(e) => {
           f.setPassword(e.target.value)

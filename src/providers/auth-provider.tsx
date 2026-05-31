@@ -3,12 +3,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   authGetSession,
   authLogin,
-  authLoginByCode,
   authLogout,
   authRegister,
   getVerifyCode,
   patchVergeConfig,
   getUserInfo,
+  getVerifyCodeByEmail,
 } from '@/services/cmds'
 
 import { AuthContext } from './auth-context'
@@ -50,13 +50,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [session?.id, fetchUserDetail])
 
   const login = useCallback(async (username: string, password: string) => {
-    const next = await authLogin(username, password)
+    const next = await authLogin(username, { password })
     setSession(next)
     return next
   }, [])
 
-  const loginByCode = useCallback(async (phone: string, key: string) => {
-    const next = await authLoginByCode(phone, key)
+  const loginByCode = useCallback(async (phone: string, code: string) => {
+    const next = await authLogin(phone, { code })
     setSession(next)
     return next
   }, [])
@@ -86,6 +86,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return result
   }, [])
 
+  const getEmailCode = useCallback(async (email: string) => {
+    const result = await getVerifyCodeByEmail(email)
+    return result
+  }, [])
+
   const value = useMemo(
     () => ({
       session,
@@ -95,6 +100,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       register,
       logout,
       getSmsCode,
+      getEmailCode,
       userDetail,
       refreshUserDetail: refreshUserDetail,
     }),
@@ -106,6 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       register,
       logout,
       getSmsCode,
+      getEmailCode,
       userDetail,
       refreshUserDetail,
     ],

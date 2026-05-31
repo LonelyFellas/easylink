@@ -4,6 +4,7 @@ use crate::cmd::StringifyErr as _;
 use crate::config::{decrypt_data, encrypt_data};
 use crate::utils::dirs;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -211,7 +212,7 @@ pub struct Node {
     pub group: Option<String>,
     pub vip_type: Option<String>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AuthUserInfo {
     /// 登录时使用的用户名（手机/邮箱），由后端响应不带，本地填充
     #[serde(default)]
@@ -244,9 +245,10 @@ struct RegisterModel {
     username: String,
     password: String,
     repassword: String,
-    jiqi_code: Option<String>,
-    device_id: i32,
+    jiqi_code: String,
+    device_id: String,
     key: Option<String>,
+    DeviceID: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -331,21 +333,26 @@ pub async fn auth_register(
     username: String,
     password: String,
     repassword: String,
-    jiqi_code: Option<String>,
+    jiqi_code: String,
     key: Option<String>,
 ) -> CmdResult<AuthUserInfo> {
     let model = RegisterModel {
+        device_id: username.clone(),
+        DeviceID: Some(username.clone()),
         username,
         password,
         repassword,
         jiqi_code,
-        device_id: 3,
         key,
     };
-    ApiClient::global()
+    println!("model: {:?}", model);
+    let data: AuthUserInfo = ApiClient::global()
         .post("/register", &model, None)
         .await
-        .stringify_err()
+        .inspect_err(|e| eprintln!("auth_register /register failed: {e}"))
+        .stringify_err()?;
+    println!("data: {:?}", data);
+    Ok(data)
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -368,39 +375,69 @@ pub async fn get_verify_code(phone: String) -> CmdResult<SendSmsData> {
     Ok(data)
 }
 
+#[tauri::command]
+pub async fn get_verify_code_by_email(email: String) -> CmdResult<()> {
+    // 邮箱接口成功时 data 为 []，无法用 SendSmsData / () 解析，只校验 envelope 成功即可
+    let _: Value = ApiClient::global()
+        .get(&format!("/sendEmail?email={}&DeviceId={}", email, email), None)
+        .await
+        .inspect_err(|e| eprintln!("get_verify_code_by_email failed: {e}"))
+        .stringify_err()?;
+    Ok(())
+}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct LoginModel {
     username: String,
-    password: String,
+    password: Option<String>,
     /// 电脑唯一标识（网卡或mac地址）
     DeviceIMEI: String,
     /// 电脑系统（macos、windows、linux）
     hbcode: String,
     /// client类型（app、web）
     hbtype: String,
+    /// 验证码
+    key: Option<String>,
 }
 /// 登录（Mock）：校验本地已注册账号
 #[tauri::command]
-pub async fn auth_login(username: String, password: String) -> CmdResult<AuthUserInfo> {
+pub async fn auth_login(username: String, password: Option<String>, code: Option<String>) -> CmdResult<AuthUserInfo> {
+    if password.is_none() && code.is_none() {
+        return Err(String::from("password or code is required").into());
+    };
+
     let mut model = LoginModel {
         username,
-        password,
-        DeviceIMEI: "".to_string(),
-        hbcode: "".to_string(),
-        hbtype: "".to_string(),
+        password: None,
+        key: None,
+        DeviceIMEI: device_imei(),
+        hbcode: std::env::consts::OS.to_string(),
+        hbtype: String::from("pc"),
     };
-    // 1) 获取设备指纹：machine-uid 经 SHA256 哈希
-    model.DeviceIMEI = device_imei();
-    // 2) 获取电脑系统（macos / windows / linux / ios / android …）
-    //    用标准库常量，编译期就确定，避免再绕 sysinfo plugin
-    model.hbcode = std::env::consts::OS.to_string();
-    model.hbtype = String::from("pc");
 
-    let mut data: AuthUserInfo = ApiClient::global()
-        .post("/login", &model, None)
-        .await
-        .inspect_err(|e| eprintln!("auth_login /login failed: {e}"))
-        .stringify_err()?;
+    let mut data: AuthUserInfo = AuthUserInfo::default();
+
+    // 密码登录
+    if let Some(password) = password {
+        model.password = Some(password);
+        data = ApiClient::global()
+            .post("/login", &model, None)
+            .await
+            .inspect_err(|e| eprintln!("auth_login /login failed: {e}"))
+            .stringify_err()?;
+        data.username = Some(model.username.clone());
+        return Ok(data);
+    }
+
+    // 验证码登录
+    if let Some(code) = code {
+        model.key = Some(code);
+        data = ApiClient::global()
+            .post("/login", &model, None)
+            .await
+            .inspect_err(|e| eprintln!("auth_login /login failed: {e}"))
+            .stringify_err()?;
+    }
     data.username = Some(model.username.clone());
 
     // 持久化会话，下次启动自动恢复登录态

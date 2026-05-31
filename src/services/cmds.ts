@@ -13,16 +13,32 @@ export async function getProfiles() {
   return invoke<IProfilesConfig>('get_profiles')
 }
 
-export async function authLogin(username: string, password: string) {
-  return invoke<IAuthSession>('auth_login', { username, password })
-}
-
-export async function authLoginByCode(phone: string, key: string) {
-  return invoke<IAuthSession>('auth_login_by_code', { phone, key })
+export async function authLogin(
+  username: string,
+  {
+    password,
+    code,
+  }: {
+    password?: string
+    code?: string
+  },
+) {
+  // 传入了 password 则使用密码登录，传入了 code 则使用验证码登录
+  return invoke<IAuthSession>('auth_login', {
+    username,
+    ...(password ? { password } : { code }),
+  })
 }
 
 export async function authRegister(params: IAuthRegister) {
-  return invoke<IAuthSession>('auth_register', { ...params })
+  console.log('authRegister params: ', params)
+  return invoke<IAuthSession>('auth_register', {
+    username: params.username,
+    password: params.password,
+    repassword: params.repassword,
+    jiqiCode: params.jiqi_code,
+    key: params.key,
+  })
 }
 
 export async function authLogout() {
@@ -45,6 +61,10 @@ export async function authGetCachedNode() {
 
 export async function getVerifyCode(phone: string) {
   return invoke<boolean>('get_verify_code', { phone })
+}
+
+export async function getVerifyCodeByEmail(email: string) {
+  return invoke<boolean>('get_verify_code_by_email', { email })
 }
 
 export async function getUserInfo(userId: string) {

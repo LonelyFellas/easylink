@@ -14,7 +14,7 @@ import { useCountdown } from './use-countdown'
 export function useRegisterForm() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { register, getSmsCode } = useAuth()
+  const { register, getSmsCode, getEmailCode } = useAuth()
 
   const [tab, setTab] = useState<RegisterTab>('phone')
   const [phone, setPhone] = useState('')
@@ -69,9 +69,12 @@ export function useRegisterForm() {
     if (countdown > 0) return
     if (!validateTarget()) return
     try {
-      await getSmsCode(target)
-      // TODO: 接入真实验证码
-      setSentCode('000000')
+      if (tab === 'phone') {
+        await getSmsCode(target)
+      } else {
+        await getEmailCode(target)
+      }
+      setSentCode(target)
       setSentTarget(target)
       startCountdown(CODE_COUNTDOWN_SEC)
     } catch (err: any) {
@@ -107,8 +110,8 @@ export function useRegisterForm() {
       }
       setCodeError('')
 
-      // 手机注册：密码选填；邮箱注册：密码 / 确认密码均必填
-      const passwordRequired = tab === 'email'
+      // 邮箱注册：密码 / 确认密码均必填；手机注册：密码选填
+      const passwordRequired = tab === 'email' || tab === 'phone'
       if (passwordRequired && !password) {
         setPasswordError(t('auth.errors.passwordEmpty'))
         return
@@ -129,7 +132,9 @@ export function useRegisterForm() {
         username: target,
         password,
         repassword: confirm,
-        key: code.trim(),
+        jiqi_code: code.trim(),
+        // uuid
+        key: crypto.randomUUID(),
       })
       navigate('/', { replace: true })
     } catch (err: any) {
