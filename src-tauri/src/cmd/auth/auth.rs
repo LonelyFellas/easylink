@@ -342,7 +342,6 @@ pub async fn auth_register(
         device_id: 3,
         key,
     };
-    println!("model: {:?}", model);
     ApiClient::global()
         .post("/register", &model, None)
         .await
@@ -397,7 +396,6 @@ pub async fn auth_login(username: String, password: String) -> CmdResult<AuthUse
     model.hbcode = std::env::consts::OS.to_string();
     model.hbtype = String::from("pc");
 
-    println!("model: {:?}", model);
     let mut data: AuthUserInfo = ApiClient::global()
         .post("/login", &model, None)
         .await
@@ -409,6 +407,155 @@ pub async fn auth_login(username: String, password: String) -> CmdResult<AuthUse
     persist_session(&data)?;
 
     Ok(data)
+}
+
+// {
+//     status: 'success',
+//     message: '',
+//     data: {
+//       id: 385426,
+//       username: '18970030363',
+//       mailname: '',
+//       password: '$2y$10$HYHrJHhsTakZO27Uf4wOquufEEruB3ft9TjNOxs2rQD5hpsoBOG76',
+//       port: 7160,
+//       passwd: '6cuYVY',
+//       vmess_id: '7b83269e-dbd7-8139-eb83-0cf246bfadad',
+//       transfer_enable: 11064185794330624,
+//       u: 1323380287,
+//       d: 12805917424,
+//       t: 1780190337,
+//       enable: 1,
+//       method: 'aes-256-ctr',
+//       protocol: 'origin',
+//       protocol_param: null,
+//       obfs: 'plain',
+//       obfs_param: null,
+//       speed_limit_per_con: 10737418240,
+//       speed_limit_per_user: 10737418240,
+//       gender: 1,
+//       wechat: null,
+//       qq: null,
+//       usage: '4',
+//       pay_way: 0,
+//       balance: 0,
+//       enable_time: '2026-04-22',
+//       expire_time: '2028-05-09 00:00:00',
+//       ban_time: 0,
+//       remark: '',
+//       level: 1,
+//       is_admin: 0,
+//       reg_ip: '115.148.168.37',
+//       last_login: 1778763469,
+//       referral_uid: 0,
+//       invite_code: 10385426,
+//       invite_url: 'http://vpnapi.easylinkvpn.com/qrcodes/10385426.png',
+//       traffic_reset_day: 2,
+//       status: 1,
+//       remember_token: '41lRJOSkkLDg2VJj4ewtcAA1rKtLoIM4WvaV5sl1bR9VYKkiPKjiforPSayM',
+//       created_at: '2026-04-22 15:18:12',
+//       updated_at: '2026-05-31 09:18:57',
+//       jiqi_code: '0',
+//       agent_level: 0,
+//       agent_fencheng: 0,
+//       agents: 0,
+//       invite_level: 0,
+//       total_commission: '0.00',
+//       total_nowithdraw: '0.00',
+//       total_frozen_mount: '0.00',
+//       device_num: 30,
+//       deleted_at: null,
+//       email_unsubscribe: 0,
+//       gpt_member_id: null,
+//       is_vip: 1,
+//       vip_begin_time: '2024-06-13 23:21:14',
+//       vip_end_time: '2029-06-13 23:21:14',
+//       vip_type: 'svip',
+//       valid_invitation: 1,
+//       redemption_equity: 0,
+//       source_id: 1,
+//       expire_in: '2028-05-09 00:00:00',
+//       invite_nums: 0
+//     }
+//   }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserInfo {
+    pub id: i64,
+    pub username: String,
+    pub mailname: Option<String>,
+    pub password: Option<String>,
+    pub port: Option<i32>,
+    pub passwd: Option<String>,
+    pub vmess_id: Option<String>,
+    pub transfer_enable: Option<i64>,
+    pub u: Option<i64>,
+    pub d: Option<i64>,
+    pub t: Option<i64>,
+    pub enable: Option<i32>,
+    pub method: Option<String>,
+    pub protocol: Option<String>,
+    pub protocol_param: Option<String>,
+    pub obfs: Option<String>,
+    pub obfs_param: Option<String>,
+    pub speed_limit_per_con: Option<i64>,
+    pub speed_limit_per_user: Option<i64>,
+    pub gender: Option<i32>,
+    pub wechat: Option<String>,
+    pub qq: Option<String>,
+    pub usage: Option<String>,
+    pub pay_way: Option<i32>,
+    pub balance: Option<i64>,
+    pub enable_time: Option<String>,
+    pub expire_time: Option<String>,
+    pub ban_time: Option<i32>,
+    pub remark: Option<String>,
+    pub level: Option<i32>,
+    pub is_admin: Option<i32>,
+    pub reg_ip: Option<String>,
+    pub last_login: Option<i64>,
+    pub referral_uid: Option<i64>,
+    pub invite_code: Option<i64>,
+    pub invite_url: Option<String>,
+    pub traffic_reset_day: Option<i32>,
+    pub status: Option<i32>,
+    pub remember_token: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+    pub jiqi_code: Option<String>,
+    pub agent_level: Option<i32>,
+    pub agent_fencheng: Option<i32>,
+    pub agents: Option<i32>,
+    pub invite_level: Option<i32>,
+    pub total_commission: Option<String>,
+    pub total_nowithdraw: Option<String>,
+    pub total_frozen_mount: Option<String>,
+    pub device_num: Option<i32>,
+    // pub deleted_at: Option<String>,
+    pub email_unsubscribe: Option<i32>,
+    pub gpt_member_id: Option<i32>,
+    pub is_vip: Option<i32>,
+    pub vip_begin_time: Option<String>,
+    pub vip_end_time: Option<String>,
+    pub vip_type: Option<String>,
+    pub valid_invitation: Option<i32>,
+    pub redemption_equity: Option<i32>,
+    pub source_id: Option<i32>,
+    pub expire_in: Option<String>,
+    pub invite_nums: Option<i32>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct UserIdModel {
+    UserID: String,
+}
+// 获取用户详情
+#[tauri::command]
+pub async fn get_user_info(userId: String) -> CmdResult<UserInfo> {
+    ApiClient::global()
+        // UserId query参数方式传入
+        .post("/getUserInfo", &UserIdModel { UserID: userId }, None)
+        .await
+        .inspect_err(|e| eprintln!("get_user_info failed: {e}"))
+        .stringify_err()
 }
 
 /// 登出：清除已存 token

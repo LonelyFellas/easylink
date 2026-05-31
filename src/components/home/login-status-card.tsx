@@ -1,8 +1,18 @@
 import {
   AccountBalanceWalletOutlined,
   PersonOutlineRounded,
+  RefreshRounded,
 } from '@mui/icons-material'
-import { Box, Button, Chip, Stack, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  IconButton,
+  Stack,
+  Typography,
+} from '@mui/material'
+import { useMutation } from '@tanstack/react-query'
 import { useLockFn } from 'ahooks'
 import dayjs from 'dayjs'
 
@@ -60,13 +70,22 @@ const cardTitle = (
 )
 
 export const LoginStatusCard = () => {
-  const { session } = useAuth()
+  const { userDetail, refreshUserDetail, session } = useAuth()
+  const {
+    mutateAsync: refreshUserDetailMutation,
+    isPending: isRefreshingUserDetail,
+  } = useMutation({
+    mutationFn: refreshUserDetail,
+  })
 
   const recharge = useLockFn(() => openRecharge())
 
-  const account = maskAccount(session?.username)
-  const expiry = formatExpiry(session?.vip_end_time || session?.expire_in)
-  const vipType = session?.vip_type
+  console.log('userDetail', userDetail)
+  const account = maskAccount(userDetail?.username || session?.username)
+  const expiry = formatExpiry(
+    userDetail?.vip_end_time || userDetail?.expire_in || session?.expire_in,
+  )
+  const vipType = userDetail?.vip_type || session?.vip_type
 
   return (
     <EnhancedCard
@@ -74,15 +93,29 @@ export const LoginStatusCard = () => {
       icon={<PersonOutlineRounded />}
       iconColor="success"
       action={
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<AccountBalanceWalletOutlined />}
-          onClick={recharge}
-          sx={{ borderRadius: 1.5 }}
-        >
-          充值
-        </Button>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconButton
+            loading={isRefreshingUserDetail}
+            onClick={() => refreshUserDetailMutation()}
+            title="刷新用户详情"
+            disabled={isRefreshingUserDetail}
+          >
+            {isRefreshingUserDetail ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : (
+              <RefreshRounded color="inherit" />
+            )}
+          </IconButton>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AccountBalanceWalletOutlined />}
+            onClick={recharge}
+            sx={{ borderRadius: 1.5 }}
+          >
+            充值
+          </Button>
+        </Box>
       }
     >
       <Stack spacing={1.5}>

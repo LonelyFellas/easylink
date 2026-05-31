@@ -8,6 +8,8 @@ export interface AuthContextType {
   loginByCode: (phone: string, key: string) => Promise<IAuthSession>
   register: (params: IAuthRegister) => Promise<IAuthSession>
   logout: () => Promise<void>
+  userDetail: IUserDetail | null
+  refreshUserDetail: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null)

@@ -29,11 +29,11 @@ const TIERS: Tier[] = [
 
 export const MembershipCard = () => {
   const theme = useTheme()
-  const { session } = useAuth()
+  const { userDetail, session } = useAuth()
 
   const upgrade = useLockFn(() => openRecharge())
 
-  const currentKey = session?.vip_type?.toLowerCase()
+  const currentKey = (userDetail?.vip_type || session?.vip_type)?.toLowerCase()
   const currentRank = TIERS.find((tier) => tier.key === currentKey)?.rank ?? 0
 
   const subtitle = currentKey

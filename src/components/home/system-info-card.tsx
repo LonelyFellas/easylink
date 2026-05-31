@@ -1,11 +1,10 @@
 import {
   InfoOutlined,
-  SettingsOutlined,
   AdminPanelSettingsOutlined,
   DnsOutlined,
   ExtensionOutlined,
 } from '@mui/icons-material'
-import { Typography, Stack, Divider, Chip, IconButton } from '@mui/material'
+import { Typography, Stack, Divider, Chip } from '@mui/material'
 import { useLockFn } from 'ahooks'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -204,15 +203,15 @@ export const SystemInfoCard = () => {
       title={t('home.components.systemInfo.title')}
       icon={<InfoOutlined />}
       iconColor="error"
-      action={
-        <IconButton
-          size="small"
-          onClick={goToSettings}
-          title={t('home.components.systemInfo.actions.settings')}
-        >
-          <SettingsOutlined fontSize="small" />
-        </IconButton>
-      }
+      // action={
+      //   <IconButton
+      //     size="small"
+      //     onClick={goToSettings}
+      //     title={t('home.components.systemInfo.actions.settings')}
+      //   >
+      //     <SettingsOutlined fontSize="small" />
+      //   </IconButton>
+      // }
     >
       <Stack spacing={1.5}>
         <Stack direction="row" sx={{ justifyContent: 'space-between' }}>

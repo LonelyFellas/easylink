@@ -8,19 +8,30 @@ import {
   authRegister,
   getVerifyCode,
   patchVergeConfig,
+  getUserInfo,
 } from '@/services/cmds'
 
 import { AuthContext } from './auth-context'
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<IAuthSession | null>(null)
+  const [userDetail, setUserDetail] = useState<IUserDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  const fetchUserDetail = useCallback(async (userId: string) => {
+    const result = await getUserInfo(userId)
+    setUserDetail(result)
+  }, [])
   useEffect(() => {
     let active = true
     authGetSession()
       .then((s) => {
-        if (active) setSession(s)
+        if (active) {
+          setSession(s)
+          if (s?.id) {
+            fetchUserDetail(s.id.toString())
+          }
+        }
       })
       .catch((error) => {
         console.error('[AuthProvider] 读取会话失败:', error)
@@ -31,7 +42,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       active = false
     }
-  }, [])
+  }, [fetchUserDetail])
+
+  const refreshUserDetail = useCallback(async () => {
+    if (!session?.id) return
+    fetchUserDetail(session.id.toString())
+  }, [session?.id, fetchUserDetail])
 
   const login = useCallback(async (username: string, password: string) => {
     const next = await authLogin(username, password)
@@ -79,8 +95,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       register,
       logout,
       getSmsCode,
+      userDetail,
+      refreshUserDetail: refreshUserDetail,
     }),
-    [session, isLoading, login, loginByCode, register, logout, getSmsCode],
+    [
+      session,
+      isLoading,
+      login,
+      loginByCode,
+      register,
+      logout,
+      getSmsCode,
+      userDetail,
+      refreshUserDetail,
+    ],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

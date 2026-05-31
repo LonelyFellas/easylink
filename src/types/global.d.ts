@@ -321,6 +321,34 @@ interface INode {
   vip_type?: string
 }
 
+/** 与后端 `UserInfo`（/getUserInfo 返回）对齐 */
+interface IUserInfo {
+  id: number
+  username: string
+  mailname?: string
+  port?: number
+  balance?: number
+  enable_time?: string
+  expire_time?: string
+  level?: number
+  is_admin?: number
+  invite_code?: number
+  invite_url?: string
+  status?: number
+  created_at?: string
+  updated_at?: string
+  agent_level?: number
+  device_num?: number
+  is_vip?: number
+  vip_begin_time?: string
+  vip_end_time?: string
+  vip_type?: string
+  valid_invitation?: number
+  source_id?: number
+  expire_in?: string
+  invite_nums?: number
+}
+
 /** 与后端 `AuthUserInfo` 对齐 */
 interface IAuthSession {
   username?: string
@@ -338,8 +366,73 @@ interface IAuthSession {
   vip_begin_time?: string
   vip_end_time?: string
   nodes?: INode[]
+  /** 登录后从 /getUserInfo 拉取的用户详情 */
+  detail?: IUserInfo
 }
 
+interface IUserDetail {
+  id: number
+  username: string
+  mailname?: string
+  password?: string
+  port?: number
+  passwd?: string
+  vmess_id?: string
+  transfer_enable?: number
+  u?: number
+  d?: number
+  t?: number
+  enable?: number
+  method?: string
+  protocol?: string
+  protocol_param?: string
+  obfs?: string
+  obfs_param?: string
+  speed_limit_per_con?: number
+  speed_limit_per_user?: number
+  gender?: number
+  wechat?: string
+  qq?: string
+  usage?: string
+  pay_way?: number
+  balance?: number
+  enable_time?: string
+  expire_time?: string
+  ban_time?: number
+  remark?: string
+  level?: number
+  is_admin?: number
+  reg_ip?: string
+  last_login?: number
+  referral_uid?: number
+  invite_code?: number
+  invite_url?: string
+  traffic_reset_day?: number
+  status?: number
+  remember_token?: string
+  created_at?: string
+  updated_at?: string
+  jiqi_code?: string
+  agent_level?: number
+  agent_fencheng?: number
+  agents?: number
+  invite_level?: number
+  total_commission?: string
+  total_nowithdraw?: string
+  total_frozen_mount?: string
+  device_num?: number
+  email_unsubscribe?: number
+  gpt_member_id?: number
+  is_vip?: number
+  vip_begin_time?: string
+  vip_end_time?: string
+  vip_type?: string
+  valid_invitation?: number
+  redemption_equity?: number
+  source_id?: number
+  expire_in?: string
+  invite_nums?: number
+}
 interface IVergeTestItem {
   uid: string
   name?: string
