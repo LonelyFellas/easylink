@@ -148,41 +148,44 @@ async function processRelease(github, options, tag, isAlpha) {
         updateData.platforms['windows-aarch64'].signature = sig
       }
 
+      // 架构识别规则：
+      //   - 含 aarch / arm64        → Apple Silicon (darwin-aarch64)
+      //   - 含 x64 / x86_64 / intel → Intel (darwin-x86_64 / darwin-intel)
+      //   - 都不含                   → 默认按 Apple Silicon 处理（现代 Mac 默认架构）
+      const isMacAarch64 =
+        /aarch|arm64/i.test(name) ||
+        (!/x64|x86_64|intel/i.test(name) && name.endsWith('.app.tar.gz'))
+      const isMacIntel = /x64|x86_64|intel/i.test(name)
+
       // darwin url (intel)
-      if (name.endsWith('.app.tar.gz') && !name.includes('aarch')) {
+      if (name.endsWith('.app.tar.gz') && isMacIntel) {
         updateData.platforms.darwin.url = browser_download_url
         updateData.platforms['darwin-intel'].url = browser_download_url
         updateData.platforms['darwin-x86_64'].url = browser_download_url
       }
       // darwin signature (intel)
-      if (name.endsWith('.app.tar.gz.sig') && !name.includes('aarch')) {
+      if (name.endsWith('.app.tar.gz.sig') && isMacIntel) {
         const sig = await getSignature(browser_download_url)
         updateData.platforms.darwin.signature = sig
         updateData.platforms['darwin-intel'].signature = sig
         updateData.platforms['darwin-x86_64'].signature = sig
       }
 
-      // darwin url (aarch)
-      if (name.endsWith('aarch64.app.tar.gz')) {
+      // darwin url (aarch64)
+      if (name.endsWith('.app.tar.gz') && isMacAarch64) {
         updateData.platforms['darwin-aarch64'].url = browser_download_url
-        // 使linux可以检查更新
-        updateData.platforms.linux.url = browser_download_url
-        updateData.platforms['linux-x86_64'].url = browser_download_url
-        updateData.platforms['linux-x86'].url = browser_download_url
-        updateData.platforms['linux-i686'].url = browser_download_url
-        updateData.platforms['linux-aarch64'].url = browser_download_url
-        updateData.platforms['linux-armv7'].url = browser_download_url
+        // 同时填 darwin 通用键，兼容旧版客户端
+        if (!updateData.platforms.darwin.url) {
+          updateData.platforms.darwin.url = browser_download_url
+        }
       }
-      // darwin signature (aarch)
-      if (name.endsWith('aarch64.app.tar.gz.sig')) {
+      // darwin signature (aarch64)
+      if (name.endsWith('.app.tar.gz.sig') && isMacAarch64) {
         const sig = await getSignature(browser_download_url)
         updateData.platforms['darwin-aarch64'].signature = sig
-        updateData.platforms.linux.signature = sig
-        updateData.platforms['linux-x86_64'].signature = sig
-        updateData.platforms['linux-x86'].url = browser_download_url
-        updateData.platforms['linux-i686'].url = browser_download_url
-        updateData.platforms['linux-aarch64'].signature = sig
-        updateData.platforms['linux-armv7'].signature = sig
+        if (!updateData.platforms.darwin.signature) {
+          updateData.platforms.darwin.signature = sig
+        }
       }
     })
 

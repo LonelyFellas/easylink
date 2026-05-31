@@ -87,12 +87,15 @@ pnpm tauri build --target aarch64-apple-darwin # M 系列架构
 ### 2.5 产物位置
 
 ```
-src-tauri/target/release/bundle/
-├── dmg/EasyLink_1.0.0_aarch64.dmg
-├── dmg/EasyLink_1.0.0_aarch64.dmg.sig
-├── macos/EasyLink.app.tar.gz
-└── macos/EasyLink.app.tar.gz.sig
+target/release/bundle/
+├── dmg/Easy Link_1.0.0_aarch64.dmg       ← 首次安装包（无 .sig 是正常的）
+├── macos/Easy Link.app.tar.gz            ← 自动更新包
+└── macos/Easy Link.app.tar.gz.sig        ← 更新包签名
 ```
+
+> ℹ️ macOS 上 `.dmg` **没有** `.sig` 是正常的。Tauri updater 只用 `.app.tar.gz` 做更新，所以只签名它。`.dmg` 仅供新用户首次下载安装。
+>
+> 上传到 GitHub Release 时需要 3 个文件：`.dmg`（新用户）+ `.app.tar.gz` + `.app.tar.gz.sig`（自动更新）。
 
 如果同时构建了两种架构，会有 `_x64` 和 `_aarch64` 两组文件。
 
@@ -156,7 +159,7 @@ pnpm tauri build
 ### 3.7 产物位置
 
 ```
-src-tauri\target\release\bundle\
+target\release\bundle\
 ├── nsis\EasyLink_1.0.0_x64-setup.exe
 ├── nsis\EasyLink_1.0.0_x64-setup.exe.sig
 ├── msi\EasyLink_1.0.0_x64_en-US.msi
@@ -230,7 +233,7 @@ pnpm tauri build
 ### 4.6 产物位置
 
 ```
-src-tauri/target/release/bundle/
+target/release/bundle/
 ├── deb/easylink_1.0.0_amd64.deb
 ├── deb/easylink_1.0.0_amd64.deb.sig
 ├── rpm/easylink-1.0.0-1.x86_64.rpm
@@ -378,3 +381,4 @@ sudo xattr -dr com.apple.quarantine /Applications/EasyLink.app
 | **GitHub Actions** | 改回路径 1，让 Actions 帮你构建三平台 |
 
 如果发版频率高，**强烈建议改回 GitHub Actions**，本地构建三平台维护成本很高。
+
