@@ -132,7 +132,7 @@ export const resolveRemoteVersion = (update: Update): string | null => {
 const localVersionNormalized = normalizeVersion(appVersion)
 
 /** 二次开发：禁用 GitHub 远程更新检查。置 false 可恢复官方更新流程。 */
-const REMOTE_UPDATE_DISABLED = true
+const REMOTE_UPDATE_DISABLED = false
 
 export const checkUpdateSafe = async (
   options?: CheckOptions,

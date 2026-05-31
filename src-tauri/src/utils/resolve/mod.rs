@@ -136,7 +136,7 @@ async fn init_silent_updater() {
 
     // 二次开发：禁用 GitHub 远程更新检查 —— 不做启动安装，也不启动后台检查。
     // 置 false 可恢复官方静默更新流程。
-    const REMOTE_UPDATE_DISABLED: bool = true;
+    const REMOTE_UPDATE_DISABLED: bool = false;
     if REMOTE_UPDATE_DISABLED {
         logging!(info, Type::Setup, "Silent updater disabled (GitHub 远程更新检查已关闭)");
         return;
