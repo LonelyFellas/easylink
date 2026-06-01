@@ -1,6 +1,6 @@
 # EasyLink 手动打包文档
 
-> 适用于 LonelyFellas/clash-verge 发版流程
+> 适用于 LonelyFellas/easylink 发版流程
 > 三平台手动构建 + 上传 GitHub Release + 生成 update.json
 
 ## 一、通用前置（所有平台都要）
@@ -30,7 +30,7 @@
 每次跑 `scripts/updater.mjs` 上传 `update.json` 都要用到。
 
 - 打开 https://github.com/settings/tokens?type=beta（Fine-grained token）
-- Repository access: Only select repositories → `LonelyFellas/clash-verge`
+- Repository access: Only select repositories → `LonelyFellas/easylink`
 - Permissions → Repository permissions:
   - `Contents`: **Read and write**
   - `Metadata`: Read
@@ -38,7 +38,7 @@
 
 ### 1.4 仓库可见性
 
-`LonelyFellas/clash-verge` 必须是 **Public**，否则用户客户端拉不到 release 资产。
+`LonelyFellas/easylink` 必须是 **Public**，否则用户客户端拉不到 release 资产。
 
 ---
 
@@ -272,7 +272,7 @@ pnpm tauri build
 
 ### Step 4：在 GitHub 网页创建 Release
 
-1. 打开 `https://github.com/LonelyFellas/clash-verge/releases/new`
+1. 打开 `https://github.com/LonelyFellas/easylink/releases/new`
 2. **Choose a tag**: 输入 `v1.0.0` → Create new tag on publish
 3. **Release title**: `v1.0.0`
 4. **Describe this release**: 写更新日志（`scripts/updater.mjs` 会读取这段作为 release notes 显示给用户）
@@ -287,7 +287,7 @@ pnpm tauri build
 
 ```bash
 export GITHUB_TOKEN="github_pat_xxxxx"          # 你的 PAT
-export GITHUB_REPOSITORY="LonelyFellas/clash-verge"
+export GITHUB_REPOSITORY="LonelyFellas/easylink"
 node scripts/updater.mjs
 ```
 
@@ -303,7 +303,7 @@ node scripts/updater.mjs
 浏览器直接访问：
 
 ```
-https://github.com/LonelyFellas/clash-verge/releases/download/updater/update.json
+https://github.com/LonelyFellas/easylink/releases/download/updater/update.json
 ```
 
 应该能下载到一个 json 文件，内容形如：
@@ -316,7 +316,7 @@ https://github.com/LonelyFellas/clash-verge/releases/download/updater/update.jso
   "platforms": {
     "darwin-aarch64": {
       "signature": "...",
-      "url": "https://github.com/LonelyFellas/clash-verge/releases/download/v1.0.0/EasyLink_1.0.0_aarch64.app.tar.gz"
+      "url": "https://github.com/LonelyFellas/easylink/releases/download/v1.0.0/EasyLink_1.0.0_aarch64.app.tar.gz"
     },
     "windows-x86_64": { ... },
     "linux-x86_64": { ... }
