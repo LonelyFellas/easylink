@@ -13,6 +13,9 @@ env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
   HUSKY: 0
+  # 发布目标仓库（公开仓库）。源码在 private 仓库，构建产物发到这里。
+  PUBLISH_OWNER: LonelyFellas
+  PUBLISH_REPO: easylink
 concurrency:
   # only allow per workflow per commit (and not pr) to run at a time
   group: '${{ github.workflow }} - ${{ github.head_ref || github.ref }}'
@@ -83,7 +86,7 @@ jobs:
           echo "TAG_NAME=$TAG_REF" >> $GITHUB_ENV
           VERSION=$(echo "$TAG_REF" | sed 's/^v//')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "DOWNLOAD_URL=${{ github.server_url }}/${{ github.repository }}/releases/download/$TAG_REF" >> $GITHUB_ENV
+          echo "DOWNLOAD_URL=${{ github.server_url }}/${{ env.PUBLISH_OWNER }}/${{ env.PUBLISH_REPO }}/releases/download/$TAG_REF" >> $GITHUB_ENV
         shell: bash
 
       - run: |
@@ -109,10 +112,11 @@ jobs:
 
       - name: Publish Release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
           PRERELEASE: ${{ contains(github.ref_name, '-rc') }}
+          PUBLISH_REPO_FULL: ${{ env.PUBLISH_OWNER }}/${{ env.PUBLISH_REPO }}
         run: |
-          matches=$(gh api repos/{owner}/{repo}/releases --paginate --jq '.[] | select(.tag_name == env.TAG_NAME) | [.id, .draft, (.assets | length), .html_url] | @tsv')
+          matches=$(gh api repos/${PUBLISH_REPO_FULL}/releases --paginate --jq '.[] | select(.tag_name == env.TAG_NAME) | [.id, .draft, (.assets | length), .html_url] | @tsv')
           release_count=$(grep -c . <<< "$matches" || true)
 
           if [ "$release_count" -eq 0 ]; then
@@ -129,7 +133,7 @@ jobs:
           IFS=$'\t' read -r release_id _ asset_count release_url <<< "$matches"
           echo "Publishing release $release_id ($release_url) with $asset_count assets."
 
-          gh api --method PATCH repos/{owner}/{repo}/releases/"$release_id" \
+          gh api --method PATCH repos/${PUBLISH_REPO_FULL}/releases/"$release_id" \
             -f name="Easy Link $TAG_NAME" \
             -F body=@release.txt \
             -F draft=false \
@@ -221,10 +225,12 @@ jobs:
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
+          owner: ${{ env.PUBLISH_OWNER }}
+          repo: ${{ env.PUBLISH_REPO }}
           tagName: ${{ github.ref_name }}
           releaseName: 'Easy Link ${{ github.ref_name }}'
           releaseBody: 'Draft release, will be updated later.'
@@ -391,10 +397,11 @@ jobs:
       - name: Upload Release
         uses: softprops/action-gh-release@v3
         with:
+          repository: ${{ env.PUBLISH_OWNER }}/${{ env.PUBLISH_REPO }}
           tag_name: v${{env.VERSION}}
           name: 'Easy Link v${{env.VERSION}}'
           body: 'See release notes for detailed changelog.'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
           draft: true
           prerelease: ${{ contains(github.ref_name, '-rc') }}
           files: |
@@ -473,10 +480,12 @@ jobs:
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           NODE_OPTIONS: '--max_old_space_size=4096'
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
+          owner: ${{ env.PUBLISH_OWNER }}
+          repo: ${{ env.PUBLISH_REPO }}
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
 
@@ -508,10 +517,11 @@ jobs:
       - name: Upload Release
         uses: softprops/action-gh-release@v3
         with:
+          repository: ${{ env.PUBLISH_OWNER }}/${{ env.PUBLISH_REPO }}
           tag_name: v${{steps.build.outputs.appVersion}}
           name: 'Easy Link v${{steps.build.outputs.appVersion}}'
           body: 'See release notes for detailed changelog.'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
           draft: true
           prerelease: ${{ contains(github.ref_name, '-rc') }}
           files: target/${{ matrix.target }}/release/bundle/nsis/*setup*
@@ -519,7 +529,9 @@ jobs:
       - name: Portable Bundle
         run: pnpm portable-fixed-webview2 ${{ matrix.target }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          PUBLISH_OWNER: ${{ env.PUBLISH_OWNER }}
+          PUBLISH_REPO: ${{ env.PUBLISH_REPO }}
 
   release-update:
     if: ${{ !contains(github.ref_name, '-rc') }}
@@ -546,7 +558,9 @@ jobs:
       - name: Release updater file
         run: pnpm updater
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          PUBLISH_OWNER: ${{ env.PUBLISH_OWNER }}
+          PUBLISH_REPO: ${{ env.PUBLISH_REPO }}
 
   release-update-for-fixed-webview2:
     if: ${{ !contains(github.ref_name, '-rc') }}
@@ -572,5 +586,7 @@ jobs:
       - name: Release updater file
         run: pnpm updater-fixed-webview2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          PUBLISH_OWNER: ${{ env.PUBLISH_OWNER }}
+          PUBLISH_REPO: ${{ env.PUBLISH_REPO }}
 

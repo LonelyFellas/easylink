@@ -1,10 +1,17 @@
 name: Auto Build
 
 on:
+  # 暂时禁用 autobuild —— 跨仓库发布改造完成后再启用
+  # 启用方法：取消下面 workflow_dispatch / schedule 的注释，并按 release.yml 的方式
+  # 把 GITHUB_TOKEN → PUBLIC_RELEASE_TOKEN、tauri-action 加 owner/repo、softprops 加 repository
   workflow_dispatch:
-  schedule:
-    # UTC+8 12:00, 18:00 -> UTC 4:00, 10:00
-    - cron: '0 4,10 * * *'
+    inputs:
+      _disabled:
+        description: 'autobuild is currently disabled, see comments in file'
+        required: false
+        default: 'disabled'
+  # schedule:
+  #   - cron: '0 4,10 * * *'
 permissions: write-all
 env:
   TAG_NAME: autobuild
@@ -19,6 +26,8 @@ concurrency:
 jobs:
   check_commit:
     name: Check Commit Needs Build
+    # 临时硬关：跨仓库发布改造未完成前不允许运行
+    if: false
     uses: clash-verge-rev/clash-verge-rev/.github/workflows/check-commit-needs-build.yml@dev
     with:
       tag_name: autobuild

@@ -70,7 +70,11 @@ async function resolvePortable() {
     throw new Error('GITHUB_TOKEN is required')
   }
 
-  const options = { owner: context.repo.owner, repo: context.repo.repo }
+  const options = {
+    owner: process.env.PUBLISH_OWNER || context.repo.owner,
+    repo: process.env.PUBLISH_REPO || context.repo.repo,
+  }
+  console.log(`Target release repo: ${options.owner}/${options.repo}`)
   const github = getOctokit(process.env.GITHUB_TOKEN)
   const tag = alpha ? 'alpha' : process.env.TAG_NAME || `v${version}`
   console.log('[INFO]: upload to ', tag)

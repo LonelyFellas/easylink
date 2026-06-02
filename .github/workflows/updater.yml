@@ -4,6 +4,8 @@ on: workflow_dispatch
 permissions: write-all
 env:
   HUSKY: 0
+  PUBLISH_OWNER: LonelyFellas
+  PUBLISH_REPO: easylink
 
 jobs:
   release-update:
@@ -28,7 +30,9 @@ jobs:
       - name: Release updater file
         run: pnpm updater
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          PUBLISH_OWNER: ${{ env.PUBLISH_OWNER }}
+          PUBLISH_REPO: ${{ env.PUBLISH_REPO }}
 
   release-update-for-fixed-webview2:
     runs-on: ubuntu-latest
@@ -52,4 +56,6 @@ jobs:
       - name: Release updater file
         run: pnpm updater-fixed-webview2
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          PUBLISH_OWNER: ${{ env.PUBLISH_OWNER }}
+          PUBLISH_REPO: ${{ env.PUBLISH_REPO }}

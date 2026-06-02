@@ -24,7 +24,13 @@ async function resolveUpdater() {
     throw new Error('GITHUB_TOKEN is required')
   }
 
-  const options = { owner: context.repo.owner, repo: context.repo.repo }
+  // 支持跨仓库发布：私有源码仓库 → 公开发布仓库
+  // 通过 PUBLISH_OWNER / PUBLISH_REPO 覆盖目标仓库；未设置时回退到当前仓库
+  const options = {
+    owner: process.env.PUBLISH_OWNER || context.repo.owner,
+    repo: process.env.PUBLISH_REPO || context.repo.repo,
+  }
+  console.log(`Target release repo: ${options.owner}/${options.repo}`)
   const github = getOctokit(process.env.GITHUB_TOKEN)
 
   // Fetch all tags using pagination
