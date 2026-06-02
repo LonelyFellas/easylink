@@ -11,7 +11,7 @@ if [ "$ID" = "deepin" ]; then
     echo "$DESKTOP_FILES" | while IFS= read -r f; do
         if [ "$(basename "$f")" == "Easy Link.desktop" ]; then
             echo "Fixing deepin desktop file"
-            mv -vf "$f" "/usr/share/applications/clash-verge.desktop"
+            mv -vf "$f" "/usr/share/applications/easylink.desktop"
         fi
     done
 fi
