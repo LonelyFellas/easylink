@@ -448,8 +448,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           repository: ${{ env.PUBLISH_OWNER }}/${{ env.PUBLISH_REPO }}
-          tag_name: v${{env.VERSION}}
-          name: 'Easy Link v${{env.VERSION}}'
+          tag_name: ${{ github.ref_name }}
+          name: 'Easy Link ${{ github.ref_name }}'
           body: 'See release notes for detailed changelog.'
           token: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
           draft: true
@@ -570,8 +570,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           repository: ${{ env.PUBLISH_OWNER }}/${{ env.PUBLISH_REPO }}
-          tag_name: v${{steps.build.outputs.appVersion}}
-          name: 'Easy Link v${{steps.build.outputs.appVersion}}'
+          tag_name: ${{ github.ref_name }}
+          name: 'Easy Link ${{ github.ref_name }}'
           body: 'See release notes for detailed changelog.'
           token: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
           draft: true
