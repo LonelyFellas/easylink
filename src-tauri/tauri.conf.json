@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "bundle": {
     "active": true,
@@ -26,15 +26,15 @@
     "devUrl": "http://localhost:3000/",
     "removeUnusedCommands": true
   },
-  "productName": "Easy Link",
+  "productName": "EasyLink",
   "identifier": "io.github.lonelyfellas.easylink",
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFDRTdFNTgxN0RENjhBMEEKUldRS2l0WjlnZVhuSEVGdFloU1hlbnlGcEt2LzJmZ050UTFtZ3ozQVpjYTVxVE1laGRRQWFCZVUK",
       "endpoints": [
+        "https://github.com/LonelyFellas/easylink/releases/download/updater/update.json",
         "https://update.hwdns.net/https://github.com/LonelyFellas/easylink/releases/download/updater/update-proxy.json",
-        "https://gh-proxy.org/https://github.com/LonelyFellas/easylink/releases/download/updater/update-proxy.json",
-        "https://github.com/LonelyFellas/easylink/releases/download/updater/update.json"
+        "https://gh-proxy.org/https://github.com/LonelyFellas/easylink/releases/download/updater/update-proxy.json"
       ],
       "windows": {
         "installMode": "passive"
