@@ -3,6 +3,11 @@ import fetch from 'node-fetch'
 
 import { resolveUpdateLog, resolveUpdateLogDefault } from './updatelog.mjs'
 
+// GitHub 下载加速镜像前缀（用于 update-proxy.json 里的安装包下载地址）
+// 国内速度问题时优先在这里换源；末尾必须带 /
+// 备选：https://gh-proxy.com/  https://gh-proxy.org/  https://mirror.ghproxy.com/  https://update.hwdns.net/
+const GH_PROXY_PREFIX = 'https://ghfast.top/'
+
 // Add stable update JSON filenames
 const UPDATE_TAG_NAME = 'updater'
 const UPDATE_JSON_FILE = 'update.json'
@@ -206,8 +211,7 @@ async function processRelease(github, options, tag, isAlpha) {
 
     Object.entries(updateDataNew.platforms).forEach(([key, value]) => {
       if (value.url) {
-        updateDataNew.platforms[key].url =
-          'https://update.hwdns.net/' + value.url
+        updateDataNew.platforms[key].url = GH_PROXY_PREFIX + value.url
       } else {
         console.log(`[Error]: updateDataNew.platforms.${key} is null`)
       }

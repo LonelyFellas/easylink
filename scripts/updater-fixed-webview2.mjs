@@ -3,6 +3,9 @@ import fetch from 'node-fetch'
 
 import { resolveUpdateLog } from './updatelog.mjs'
 
+// GitHub 下载加速镜像前缀，需与 updater.mjs 保持一致；末尾必须带 /
+const GH_PROXY_PREFIX = 'https://ghfast.top/'
+
 const UPDATE_TAG_NAME = 'updater'
 const UPDATE_JSON_FILE = 'update-fixed-webview2.json'
 const UPDATE_JSON_PROXY = 'update-fixed-webview2-proxy.json'
@@ -100,7 +103,7 @@ async function resolveUpdater() {
 
   Object.entries(updateDataNew.platforms).forEach(([key, value]) => {
     if (value.url) {
-      updateDataNew.platforms[key].url = 'https://update.hwdns.net/' + value.url
+      updateDataNew.platforms[key].url = GH_PROXY_PREFIX + value.url
     } else {
       console.log(`[Error]: updateDataNew.platforms.${key} is null`)
     }
