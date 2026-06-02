@@ -284,18 +284,24 @@ jobs:
 
       - name: Attest Windows bundles
         if: matrix.os == 'windows-latest'
+        # 私有仓库（个人账户）无法生成 build provenance，失败不阻断发布
+        continue-on-error: true
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: target/${{ matrix.target }}/release/bundle/nsis/*setup*
 
       - name: Attest macOS bundles
         if: matrix.os == 'macos-latest'
+        # 私有仓库（个人账户）无法生成 build provenance，失败不阻断发布
+        continue-on-error: true
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: target/${{ matrix.target }}/release/bundle/dmg/*.dmg
 
       - name: Attest Linux bundles
         if: matrix.os == 'ubuntu-22.04'
+        # 私有仓库（个人账户）无法生成 build provenance，失败不阻断发布
+        continue-on-error: true
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
@@ -430,6 +436,8 @@ jobs:
           echo "BUILDTIME=$(TZ=Asia/Shanghai date)" >> $GITHUB_ENV
 
       - name: Attest Linux bundles
+        # 私有仓库（个人账户）无法生成 build provenance，失败不阻断发布
+        continue-on-error: true
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
@@ -552,6 +560,8 @@ jobs:
           }
 
       - name: Attest Windows bundles
+        # 私有仓库（个人账户）无法生成 build provenance，失败不阻断发布
+        continue-on-error: true
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: target/${{ matrix.target }}/release/bundle/nsis/*setup*
