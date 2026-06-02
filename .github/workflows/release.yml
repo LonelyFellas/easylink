@@ -52,14 +52,18 @@ jobs:
           TAG_REF="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
           echo "Current tag: $TAG_REF"
 
+          # 预览版 tag（vX.Y.Z-rc.N 等）只比对基础版本号，剥掉 -rc/-beta 等后缀
+          BASE_TAG="${TAG_REF%%-*}"
+          echo "Base tag (suffix stripped): $BASE_TAG"
+
           PKG_VERSION=$(jq -r .version package.json)
           echo "package.json version: $PKG_VERSION"
 
           EXPECTED_TAG="v$PKG_VERSION"
 
-          if [[ "$TAG_REF" != "$EXPECTED_TAG" ]]; then
+          if [[ "$BASE_TAG" != "$EXPECTED_TAG" ]]; then
             echo "❌ Version mismatch:"
-            echo "   Git tag       : $TAG_REF"
+            echo "   Git tag (base): $BASE_TAG"
             echo "   package.json  : $EXPECTED_TAG"
             exit 1
           fi
