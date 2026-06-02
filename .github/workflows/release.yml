@@ -70,6 +70,44 @@ jobs:
 
           echo "✅ Tag and package.json version are consistent."
 
+  create_release:
+    name: Create Draft Release on Public Repo
+    needs: [check_tag_version]
+    runs-on: ubuntu-latest
+    steps:
+      # 跨仓库发布：tag 只存在于本(private)仓库，公开仓库没有对应 commit。
+      # 必须先在公开仓库用它自己的默认分支作为 target_commitish 预建 draft release，
+      # 否则后续构建步骤创建 release 会因 target_commitish 无效而失败。
+      - name: Create draft release on public repo
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          PUBLISH_REPO_FULL: ${{ env.PUBLISH_OWNER }}/${{ env.PUBLISH_REPO }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ contains(github.ref_name, '-rc') }}
+        run: |
+          if gh release view "$TAG" --repo "$PUBLISH_REPO_FULL" >/dev/null 2>&1; then
+            echo "Release $TAG already exists on $PUBLISH_REPO_FULL, skip creation."
+            exit 0
+          fi
+
+          DEFAULT_BRANCH=$(gh repo view "$PUBLISH_REPO_FULL" --json defaultBranchRef --jq '.defaultBranchRef.name')
+          echo "Public repo default branch: $DEFAULT_BRANCH"
+
+          PRERELEASE_FLAG=""
+          if [ "$PRERELEASE" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "$TAG" \
+            --repo "$PUBLISH_REPO_FULL" \
+            --target "$DEFAULT_BRANCH" \
+            --title "Easy Link $TAG" \
+            --notes "Draft release, will be updated later." \
+            --draft \
+            $PRERELEASE_FLAG
+
+          echo "Created draft release $TAG on $PUBLISH_REPO_FULL."
+
   update_tag:
     name: Update tag
     runs-on: ubuntu-latest
@@ -146,7 +184,7 @@ jobs:
 
   release:
     name: Release Build
-    needs: [check_tag_version]
+    needs: [check_tag_version, create_release]
     strategy:
       fail-fast: false
       matrix:
@@ -266,7 +304,7 @@ jobs:
 
   release-for-linux-arm:
     name: Release Build for Linux ARM
-    needs: [check_tag_version]
+    needs: [check_tag_version, create_release]
     strategy:
       fail-fast: false
       matrix:
@@ -414,7 +452,7 @@ jobs:
 
   release-for-fixed-webview2:
     name: Release Build for Fixed WebView2
-    needs: [check_tag_version]
+    needs: [check_tag_version, create_release]
     strategy:
       fail-fast: false
       matrix:
