@@ -58,7 +58,11 @@ async function resolveUpdater() {
   const preReleaseRegex = /^(alpha|beta|rc|pre)$/i // Matches exact alpha/beta/rc/pre tags
 
   // Get the latest stable tag and pre-release tag
-  const stableTag = tags.find((t) => stableTagRegex.test(t.name))
+  // GitHub listTags 不保证按版本号排序，必须自己按 semver 取最高版本，
+  // 否则可能选错 tag（曾导致 update.json 指向 v1.0.1 而非最新版）。
+  const stableTag = tags
+    .filter((t) => stableTagRegex.test(t.name))
+    .sort((a, b) => compareSemverDesc(a.name, b.name))[0]
   const preReleaseTag = tags.find((t) => preReleaseRegex.test(t.name))
 
   console.log('All tags:', tags.map((t) => t.name).join(', '))
@@ -313,6 +317,14 @@ async function processRelease(github, options, tag, isAlpha) {
       console.error(`Failed to get release for tag: ${tag.name}`, error.message)
     }
   }
+}
+
+// 按 semver 从大到小比较（tag 形如 vX.Y.Z），用于挑选最新版本
+function compareSemverDesc(a, b) {
+  const parse = (name) => name.replace(/^v/, '').split('.').map(Number)
+  const [a1, a2, a3] = parse(a)
+  const [b1, b2, b3] = parse(b)
+  return b1 - a1 || b2 - a2 || b3 - a3
 }
 
 // get the signature file content

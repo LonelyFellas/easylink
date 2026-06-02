@@ -10,6 +10,14 @@ const UPDATE_TAG_NAME = 'updater'
 const UPDATE_JSON_FILE = 'update-fixed-webview2.json'
 const UPDATE_JSON_PROXY = 'update-fixed-webview2-proxy.json'
 
+// 按 semver 从大到小比较（tag 形如 vX.Y.Z），用于挑选最新版本
+function compareSemverDesc(a, b) {
+  const parse = (name) => name.replace(/^v/, '').split('.').map(Number)
+  const [a1, a2, a3] = parse(a)
+  const [b1, b2, b3] = parse(b)
+  return b1 - a1 || b2 - a2 || b3 - a3
+}
+
 /// generate update.json
 /// upload to update tag's release asset
 async function resolveUpdater() {
@@ -27,7 +35,10 @@ async function resolveUpdater() {
   })
 
   // get the latest publish tag
-  const tag = tags.find((t) => t.name.startsWith('v'))
+  // GitHub listTags 不保证按版本号排序，必须自己按 semver 取最高版本
+  const tag = tags
+    .filter((t) => /^v\d+\.\d+\.\d+$/.test(t.name))
+    .sort((a, b) => compareSemverDesc(a.name, b.name))[0]
 
   console.log(tag)
   console.log()
