@@ -127,23 +127,7 @@ export const LoginForm = ({ onSwitchToRegister }: Props) => {
           mt: -0.5,
         }}
       >
-        {f.tab === 'phone' ? (
-          <Link
-            component="button"
-            type="button"
-            underline="hover"
-            sx={{ fontSize: 14 }}
-            onClick={() =>
-              f.switchMethod(f.method === 'code' ? 'password' : 'code')
-            }
-          >
-            {f.method === 'code'
-              ? t('auth.switchToPassword')
-              : t('auth.switchToCode')}
-          </Link>
-        ) : (
-          <span />
-        )}
+        <span />
         <Link
           component="button"
           type="button"
