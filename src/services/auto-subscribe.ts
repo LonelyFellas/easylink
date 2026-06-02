@@ -79,15 +79,14 @@ export async function ensureNodeProfile(session: IAuthSession): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 300))
 
   // 按 user id 绑定的缓存恢复默认节点（缓存在 Rust 后端）：
-  // - 无缓存（首次登录）→ DIRECT 直连，不自动订阅节点；
-  // - 有缓存且节点仍在 → 切回该节点；
-  // - 有缓存但节点已没了 → 逐级回退（svip→vip→普通），都没有 → DIRECT。
+  // - 有缓存且节点仍在 → 切回该节点（包括用户主动选过的 DIRECT）；
+  // - 有缓存但节点已没了 → 逐级回退（svip→vip→普通）；
+  // - 无缓存（首次登录）→ 按用户等级挑一个默认节点，挑不到才 DIRECT；
+  // - 已登录的前提下不主动落到 DIRECT，DIRECT 只是兜底。
   const proxyNames = buildProxyNames(nodes)
   const cached = await authGetCachedNode()
   let target: string
-  if (cached == null) {
-    target = 'DIRECT'
-  } else if (cached === 'DIRECT' || proxyNames.includes(cached)) {
+  if (cached === 'DIRECT' || (cached != null && proxyNames.includes(cached))) {
     target = cached
   } else {
     target = pickByTier(nodes, session.vip_type) ?? 'DIRECT'

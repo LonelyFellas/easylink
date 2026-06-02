@@ -26,7 +26,6 @@ fn device_imei() -> String {
 // token、账号均加密后写入 app 目录下的 auth.dat，明文不落盘。
 
 const AUTH_FILE: &str = "auth.dat";
-#[allow(dead_code)] // 暂未使用：接入真实后端会改走服务端下发的 expires_at
 const SESSION_TTL_SECS: i64 = 7 * 24 * 60 * 60; // 7 天
 
 // {
@@ -257,6 +256,9 @@ struct AuthStore {
     users: Vec<AuthUser>,
     #[serde(default)]
     session: Option<AuthUserInfo>,
+    /// 会话写入时间（unix 秒）。读取时与 SESSION_TTL_SECS 比较，过期视为未登录。
+    #[serde(default)]
+    session_saved_at: Option<i64>,
     /// 用户 id → 上次手动选择的节点名。跨登出存活，供再次登录恢复。
     #[serde(default)]
     node_cache: HashMap<String, String>,
@@ -298,10 +300,10 @@ fn write_store(store: &AuthStore) -> Result<(), String> {
 fn persist_session(session: &AuthUserInfo) -> Result<(), String> {
     let mut store = read_store();
     store.session = Some(session.clone());
+    store.session_saved_at = Some(now());
     write_store(&store)
 }
 
-#[allow(dead_code)] // 暂未使用：接入真实后端后会用于会话过期判断
 fn now() -> i64 {
     chrono::Utc::now().timestamp()
 }
@@ -426,6 +428,7 @@ pub async fn auth_login(username: String, password: Option<String>, code: Option
             .inspect_err(|e| eprintln!("auth_login /login failed: {e}"))
             .stringify_err()?;
         data.username = Some(model.username.clone());
+        persist_session(&data)?;
         return Ok(data);
     }
 
@@ -600,14 +603,24 @@ pub async fn get_user_info(userId: String) -> CmdResult<UserInfo> {
 pub fn auth_logout() -> CmdResult {
     let mut store = read_store();
     store.session = None;
+    store.session_saved_at = None;
     write_store(&store)?;
     Ok(())
 }
 
-/// 启动时读取持久化的会话，不存在返回 None
+/// 启动时读取持久化的会话；超过 SESSION_TTL_SECS（7 天）视为过期，清除并返回 None
 #[tauri::command]
 pub fn auth_get_session() -> Option<AuthUserInfo> {
-    read_store().session
+    let mut store = read_store();
+    let session = store.session.as_ref()?;
+    let saved_at = store.session_saved_at.unwrap_or(0);
+    if now().saturating_sub(saved_at) >= SESSION_TTL_SECS {
+        store.session = None;
+        store.session_saved_at = None;
+        let _ = write_store(&store);
+        return None;
+    }
+    Some(session.clone())
 }
 
 /// 记住当前登录用户最后手动选择的节点（按 user id 绑定，跨登出存活）。
