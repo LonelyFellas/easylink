@@ -609,13 +609,7 @@ async fn fetch_user_nodes(user_id: String) -> CmdResult<Vec<Node>> {
 pub async fn get_user_info(userId: String) -> CmdResult<UserInfo> {
     let mut info: UserInfo = ApiClient::global()
         // UserId query参数方式传入
-        .post(
-            "/getUserInfo",
-            &UserIdModel {
-                UserID: userId.clone(),
-            },
-            None,
-        )
+        .post("/getUserInfo", &UserIdModel { UserID: userId.clone() }, None)
         .await
         .inspect_err(|e| eprintln!("get_user_info failed: {e}"))
         .stringify_err()?;
