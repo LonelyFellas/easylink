@@ -439,6 +439,12 @@ async fn merge_default_config(
         }
     }
 
+    // 强制让 verge_mixed_port 覆盖 profile / clash_config 中的 mixed-port，
+    // 保证 profile 里硬编码的端口不会盖过用户在 verge 设置中选的端口。
+    if let Some(p) = Config::verge().await.latest_arc().verge_mixed_port {
+        config.insert("mixed-port".into(), p.into());
+    }
+
     config
 }
 
