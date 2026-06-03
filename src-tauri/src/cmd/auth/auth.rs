@@ -347,13 +347,11 @@ pub async fn auth_register(
         jiqi_code,
         key,
     };
-    println!("model: {:?}", model);
     let data: AuthUserInfo = ApiClient::global()
         .post("/register", &model, None)
         .await
         .inspect_err(|e| eprintln!("auth_register /register failed: {e}"))
         .stringify_err()?;
-    println!("data: {:?}", data);
     Ok(data)
 }
 
@@ -581,21 +579,58 @@ pub struct UserInfo {
     pub source_id: Option<i32>,
     pub expire_in: Option<String>,
     pub invite_nums: Option<i32>,
+    /// 个人节点列表：/getUserInfo 本身不返回，由 get_user_info 顺带拉取后塞入
+    #[serde(default)]
+    pub nodes: Vec<Node>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct UserIdModel {
     UserID: String,
 }
-// 获取用户详情
+#[derive(Debug, Deserialize)]
+struct UserNodeItemModel {
+    // /getNodeList 返回按地区分组，这里只取节点；其余字段（country_code/name）由 serde 忽略
+    nodes: Vec<Node>,
+}
+
+/// 拉取用户节点列表：/getNodeList 返回按地区分组，这里拍平成一维。
+async fn fetch_user_nodes(user_id: String) -> CmdResult<Vec<Node>> {
+    let data: Vec<UserNodeItemModel> = ApiClient::global()
+        .post("/getNodeList", &UserIdModel { UserID: user_id }, None)
+        .await
+        .inspect_err(|e| eprintln!("fetch_user_nodes failed: {e}"))
+        .stringify_err()?;
+    Ok(data.into_iter().flat_map(|item| item.nodes).collect())
+}
+
+// 获取用户详情（顺带拉取个人节点，放进 detail.nodes 一并返回）
 #[tauri::command]
 pub async fn get_user_info(userId: String) -> CmdResult<UserInfo> {
-    ApiClient::global()
+    let mut info: UserInfo = ApiClient::global()
         // UserId query参数方式传入
-        .post("/getUserInfo", &UserIdModel { UserID: userId }, None)
+        .post(
+            "/getUserInfo",
+            &UserIdModel {
+                UserID: userId.clone(),
+            },
+            None,
+        )
         .await
         .inspect_err(|e| eprintln!("get_user_info failed: {e}"))
-        .stringify_err()
+        .stringify_err()?;
+    // 节点拉取做成非致命：节点接口异常时仍返回用户详情，避免详情整体加载失败
+    info.nodes = fetch_user_nodes(userId).await.unwrap_or_else(|e| {
+        eprintln!("get_user_info: 拉取节点失败，详情仍返回: {e}");
+        Vec::new()
+    });
+    Ok(info)
+}
+
+// 获取用户节点列表
+#[tauri::command]
+pub async fn get_user_nodes(userId: String) -> CmdResult<Vec<Node>> {
+    fetch_user_nodes(userId).await
 }
 
 /// 登出：清除已存 token

@@ -88,7 +88,12 @@
     "currentProxy": {
       "title": "現在のノード",
       "actions": {
-        "refreshDelay": "遅延テスト"
+        "refreshDelay": "遅延テスト",
+        "refreshNodes": "Refresh nodes"
+      },
+      "messages": {
+        "refreshNodesSuccess": "Nodes refreshed",
+        "refreshNodesFailed": "Failed to refresh nodes"
       },
       "labels": {
         "globalMode": "グローバルモード",

@@ -88,7 +88,12 @@
     "currentProxy": {
       "title": "Current Node",
       "actions": {
-        "refreshDelay": "فحص التأخير"
+        "refreshDelay": "فحص التأخير",
+        "refreshNodes": "Refresh nodes"
+      },
+      "messages": {
+        "refreshNodesSuccess": "Nodes refreshed",
+        "refreshNodesFailed": "Failed to refresh nodes"
       },
       "labels": {
         "globalMode": "الوضع العالمي",

@@ -8,6 +8,7 @@ import {
   createProfile,
   deleteProfile,
   getProfiles,
+  getUserNodes,
   patchProfilesConfig,
   saveProfileFile,
 } from './cmds'
@@ -41,6 +42,19 @@ function pickByTier(nodes: INode[], userTier?: string | null): string | null {
     if (idx >= 0) return names[idx]
   }
   return null
+}
+
+/**
+ * 仅刷新个人节点：单独拉取最新节点 → 重新生成/激活订阅（不涉及用户详情）。
+ * 用于「当前节点」卡片的刷新按钮。返回最新节点列表。
+ */
+export async function refreshUserNodes(
+  session: IAuthSession,
+): Promise<INode[]> {
+  if (!session?.id) return session?.nodes ?? []
+  const nodes = await getUserNodes(session.id.toString())
+  await ensureNodeProfile({ ...session, nodes })
+  return nodes
 }
 
 /**

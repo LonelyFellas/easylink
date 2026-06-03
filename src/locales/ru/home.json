@@ -88,7 +88,12 @@
     "currentProxy": {
       "title": "Текущий прокси",
       "actions": {
-        "refreshDelay": "Проверить задержку"
+        "refreshDelay": "Проверить задержку",
+        "refreshNodes": "Refresh nodes"
+      },
+      "messages": {
+        "refreshNodesSuccess": "Nodes refreshed",
+        "refreshNodesFailed": "Failed to refresh nodes"
       },
       "labels": {
         "globalMode": "Глобальный режим",

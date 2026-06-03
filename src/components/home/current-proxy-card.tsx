@@ -2,6 +2,7 @@
 import {
   AccessTimeRounded,
   NetworkCheckRounded,
+  RefreshRounded,
   WifiOff as SignalError,
   SignalWifi3Bar as SignalGood,
   SignalWifi2Bar as SignalMedium,
@@ -43,7 +44,9 @@ import {
   useRulesData,
 } from '@/providers/app-data-context'
 import { useAuth } from '@/providers/auth-context'
+import { refreshUserNodes } from '@/services/auto-subscribe'
 import delayManager from '@/services/delay'
+import { showNotice } from '@/services/notice-service'
 import { debugLog } from '@/utils/debug'
 
 // 本地存储的键名
@@ -697,6 +700,28 @@ export const CurrentProxyCard = () => {
     )
   }
 
+  // 刷新用户节点：拉取最新节点 → 重建并激活订阅 → 刷新代理数据
+  const [refreshingNodes, setRefreshingNodes] = useState(false)
+  const handleRefreshNodes = useLockFn(async () => {
+    if (!session?.id) return
+    setRefreshingNodes(true)
+    try {
+      // 只刷新个人节点（不涉及用户详情）
+      await refreshUserNodes(session)
+      refreshProxy()
+      showNotice.success(
+        'home.components.currentProxy.messages.refreshNodesSuccess',
+      )
+    } catch (err) {
+      console.error('[CurrentProxyCard] 刷新节点失败', err)
+      showNotice.error(
+        'home.components.currentProxy.messages.refreshNodesFailed',
+      )
+    } finally {
+      setRefreshingNodes(false)
+    }
+  })
+
   // 排序类型变更
   const handleSortTypeChange = useCallback(() => {
     const newSortType = ((sortType + 1) % 3) as ProxySortType
@@ -945,6 +970,29 @@ export const CurrentProxyCard = () => {
             >
               {getSortIcon()}
             </IconButton>
+          </Tooltip>
+          <Tooltip
+            title={t('home.components.currentProxy.actions.refreshNodes')}
+          >
+            <span>
+              <IconButton
+                size="small"
+                color="inherit"
+                onClick={handleRefreshNodes}
+                disabled={refreshingNodes}
+                sx={{
+                  '@keyframes spin': {
+                    from: { transform: 'rotate(0deg)' },
+                    to: { transform: 'rotate(360deg)' },
+                  },
+                  ...(refreshingNodes && {
+                    animation: 'spin 0.8s linear infinite',
+                  }),
+                }}
+              >
+                <RefreshRounded />
+              </IconButton>
+            </span>
           </Tooltip>
           {/* 先关闭：跳转代理页的「代理 ›」按钮
           <Button

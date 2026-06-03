@@ -88,7 +88,12 @@
     "currentProxy": {
       "title": "Current Node",
       "actions": {
-        "refreshDelay": "Задержканы тикшерү"
+        "refreshDelay": "Задержканы тикшерү",
+        "refreshNodes": "Refresh nodes"
+      },
+      "messages": {
+        "refreshNodesSuccess": "Nodes refreshed",
+        "refreshNodesFailed": "Failed to refresh nodes"
       },
       "labels": {
         "globalMode": "Глобаль режим",

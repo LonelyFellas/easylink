@@ -88,7 +88,12 @@
     "currentProxy": {
       "title": "Aktueller Knoten",
       "actions": {
-        "refreshDelay": "Latenztest"
+        "refreshDelay": "Latenztest",
+        "refreshNodes": "Refresh nodes"
+      },
+      "messages": {
+        "refreshNodesSuccess": "Nodes refreshed",
+        "refreshNodesFailed": "Failed to refresh nodes"
       },
       "labels": {
         "globalMode": "Global Mode",

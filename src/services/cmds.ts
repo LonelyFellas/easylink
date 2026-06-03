@@ -70,6 +70,10 @@ export async function getVerifyCodeByEmail(email: string) {
 export async function getUserInfo(userId: string) {
   return invoke<IUserInfo>('get_user_info', { userId })
 }
+
+export async function getUserNodes(userId: string) {
+  return invoke<INode[]>('get_user_nodes', { userId })
+}
 export async function authBuildProfileYaml(nodes: INode[]) {
   return invoke<string>('auth_build_profile_yaml', { nodes })
 }

@@ -132,8 +132,9 @@ const Layout = () => {
           borderTopRightRadius: '0px',
         }}
         onContextMenu={(e) => {
-          // 禁用原生右键菜单（reload / 打开控制台等），但保留输入框、
-          // 可编辑区域的右键，方便复制粘贴。
+          // 仅在生产环境禁用原生右键菜单（reload / 打开控制台等），
+          // dev 下保留以便调试；输入框、可编辑区域的右键始终保留，方便复制粘贴。
+          if (!import.meta.env.PROD) return
           const target = e.target as HTMLElement
           const tag = target.tagName.toLowerCase()
           const editable =

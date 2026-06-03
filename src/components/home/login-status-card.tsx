@@ -80,7 +80,6 @@ export const LoginStatusCard = () => {
 
   const recharge = useLockFn(() => openRecharge())
 
-  console.log('userDetail', userDetail)
   const account = maskAccount(userDetail?.username || session?.username)
   const expiry = formatExpiry(
     userDetail?.vip_end_time || userDetail?.expire_in || session?.expire_in,

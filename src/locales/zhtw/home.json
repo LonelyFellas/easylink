@@ -88,7 +88,12 @@
     "currentProxy": {
       "title": "目前節點",
       "actions": {
-        "refreshDelay": "延遲測試"
+        "refreshDelay": "延遲測試",
+        "refreshNodes": "Refresh nodes"
+      },
+      "messages": {
+        "refreshNodesSuccess": "Nodes refreshed",
+        "refreshNodesFailed": "Failed to refresh nodes"
       },
       "labels": {
         "globalMode": "全域模式",

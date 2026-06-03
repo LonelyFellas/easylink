@@ -88,7 +88,12 @@
     "currentProxy": {
       "title": "Current Node",
       "actions": {
-        "refreshDelay": "Delay check"
+        "refreshDelay": "Delay check",
+        "refreshNodes": "Refresh nodes"
+      },
+      "messages": {
+        "refreshNodesSuccess": "Nodes refreshed",
+        "refreshNodesFailed": "Failed to refresh nodes"
       },
       "labels": {
         "globalMode": "Global Mode",

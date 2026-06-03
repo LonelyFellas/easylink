@@ -22,6 +22,7 @@ use anyhow::Result;
 use clash_verge_logging::{Type, logging};
 use cmd::auth::auth::{
     auth_cache_node, auth_get_cached_node, auth_get_session, auth_login, auth_logout, auth_register, get_user_info,
+    get_user_nodes,
     get_verify_code, get_verify_code_by_email,
 };
 use cmd::auth::node_profile::auth_build_profile_yaml;
@@ -225,6 +226,7 @@ mod app_init {
             get_verify_code,
             get_verify_code_by_email,
             get_user_info,
+            get_user_nodes,
             auth_login,
             auth_logout,
             auth_get_session,

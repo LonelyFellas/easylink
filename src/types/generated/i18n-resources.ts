@@ -107,6 +107,7 @@ export interface TranslationResources {
         currentProxy: {
           actions: {
             refreshDelay: string
+            refreshNodes: string
           }
           labels: {
             directMode: string
@@ -114,6 +115,10 @@ export interface TranslationResources {
             group: string
             noActiveNode: string
             proxy: string
+          }
+          messages: {
+            refreshNodesFailed: string
+            refreshNodesSuccess: string
           }
           title: string
         }

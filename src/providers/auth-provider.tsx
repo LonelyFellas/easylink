@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { ensureNodeProfile } from '@/services/auto-subscribe'
 import {
   authGetSession,
   authLogin,
@@ -21,6 +22,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchUserDetail = useCallback(async (userId: string) => {
     const result = await getUserInfo(userId)
     setUserDetail(result)
+    return result
   }, [])
   useEffect(() => {
     let active = true
@@ -46,8 +48,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refreshUserDetail = useCallback(async () => {
     if (!session?.id) return
-    fetchUserDetail(session.id.toString())
-  }, [session?.id, fetchUserDetail])
+    // get_user_info 已顺带返回个人节点，拿到后重新激活订阅，刷新详情即刷新节点
+    const detail = await fetchUserDetail(session.id.toString())
+    if (detail?.nodes?.length) {
+      try {
+        await ensureNodeProfile({ ...session, nodes: detail.nodes })
+      } catch (error) {
+        console.warn('[AuthProvider] 刷新节点失败:', error)
+      }
+    }
+  }, [session, fetchUserDetail])
 
   const login = useCallback(async (username: string, password: string) => {
     const next = await authLogin(username, { password })

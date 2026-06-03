@@ -88,7 +88,12 @@
     "currentProxy": {
       "title": "Geçerli Düğüm",
       "actions": {
-        "refreshDelay": "Gecikme kontrolü"
+        "refreshDelay": "Gecikme kontrolü",
+        "refreshNodes": "Refresh nodes"
+      },
+      "messages": {
+        "refreshNodesSuccess": "Nodes refreshed",
+        "refreshNodesFailed": "Failed to refresh nodes"
       },
       "labels": {
         "globalMode": "Küresel Mod",

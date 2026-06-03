@@ -347,6 +347,8 @@ interface IUserInfo {
   source_id?: number
   expire_in?: string
   invite_nums?: number
+  /** get_user_info 顺带拉取的个人节点 */
+  nodes?: INode[]
 }
 
 /** 与后端 `AuthUserInfo` 对齐 */
