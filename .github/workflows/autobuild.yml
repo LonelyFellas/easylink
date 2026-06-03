@@ -222,6 +222,13 @@ jobs:
           rustup target list --installed
           echo "Rust target ${{ matrix.target }} installed."
 
+      - name: Clean stale bundle output (macOS only)
+        if: matrix.os == 'macos-latest'
+        run: |
+          rm -rf target/${{ matrix.target }}/release/bundle
+          rm -f target/${{ matrix.target }}/release/easylink target/${{ matrix.target }}/release/clash-verge
+          rm -rf target/${{ matrix.target }}/release/.fingerprint/easylink-* target/${{ matrix.target }}/release/.fingerprint/clash-verge-*
+
       - name: Tauri build for Windows-macOS-Linux
         uses: tauri-apps/tauri-action@v0
         env:
