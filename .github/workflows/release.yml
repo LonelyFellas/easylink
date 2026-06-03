@@ -295,6 +295,25 @@ jobs:
           args: --target ${{ matrix.target }}
           includeUpdaterJson: true
 
+      - name: Notarize and staple DMG (macOS only)
+        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for DMG in target/${{ matrix.target }}/release/bundle/dmg/*.dmg; do
+            echo "::group::Notarize $DMG"
+            xcrun notarytool submit "$DMG" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+            xcrun stapler staple "$DMG"
+            xcrun stapler validate "$DMG"
+            echo "::endgroup::"
+          done
+
       - name: Attest Windows bundles
         if: matrix.os == 'windows-latest'
         # 私有仓库（个人账户）无法生成 build provenance，失败不阻断发布
