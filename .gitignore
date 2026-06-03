@@ -17,4 +17,5 @@ CLAUDE.md
 .vfox.toml
 .vfox/
 .claude
+.env
 AGENTS.md
