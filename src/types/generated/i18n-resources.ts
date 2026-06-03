@@ -1088,6 +1088,10 @@ export interface TranslationResources {
             breakChangeError: string
             portableError: string
           }
+          snackbar: {
+            subtitle: string
+            title: string
+          }
           title: string
         }
         webUI: {

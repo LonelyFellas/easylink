@@ -424,6 +424,10 @@
     },
     "update": {
       "title": "새 버전 v{{version}}",
+      "snackbar": {
+        "title": "New version available",
+        "subtitle": "v{{version}} · Click to view"
+      },
       "actions": {
         "goToRelease": "릴리스 페이지로 이동",
         "update": "업데이트"

@@ -424,6 +424,10 @@
     },
     "update": {
       "title": "新版本 v{{version}}",
+      "snackbar": {
+        "title": "有新版本可用",
+        "subtitle": "v{{version}} · 点击查看更新"
+      },
       "actions": {
         "goToRelease": "前往发布页",
         "update": "更新"

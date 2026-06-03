@@ -606,6 +606,8 @@ export const translationKeys = [
   'settings.modals.misc.options.autoLogClean.never',
   'settings.modals.misc.options.autoLogClean.retainDays',
   'settings.modals.update.title',
+  'settings.modals.update.snackbar.title',
+  'settings.modals.update.snackbar.subtitle',
   'settings.modals.update.actions.goToRelease',
   'settings.modals.update.actions.update',
   'settings.modals.update.messages.portableError',

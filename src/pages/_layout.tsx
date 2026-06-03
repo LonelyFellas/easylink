@@ -1,70 +1,54 @@
 import {
-  DndContext,
   KeyboardSensor,
   PointerSensor,
-  closestCenter,
   useSensor,
   useSensors,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import {
-  Box,
-  List,
-  Menu,
-  MenuItem,
-  Paper,
-  SvgIcon,
-  ThemeProvider,
-} from '@mui/material'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
-import type { CSSProperties } from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { Outlet, useLocation, useNavigate } from 'react-router'
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Paper, ThemeProvider } from "@mui/material";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import type { CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Outlet, useLocation, useNavigate } from "react-router";
 
-import iconDark from '@/assets/image/icon_dark.svg?react'
-import iconLight from '@/assets/image/icon_light.svg?react'
-import LogoSvg from '@/assets/image/logo.svg?react'
-import { BaseErrorBoundary } from '@/components/base'
-import { LayoutItem } from '@/components/layout/layout-item'
-import { LayoutTraffic } from '@/components/layout/layout-traffic'
-import { NoticeManager } from '@/components/layout/notice-manager'
-import { UpdateButton } from '@/components/layout/update-button'
-import { WindowControls } from '@/components/layout/window-controller'
-import { useI18n } from '@/hooks/use-i18n'
-import { useVerge } from '@/hooks/use-verge'
-import { useWindowDecorations } from '@/hooks/use-window'
-import { useThemeMode } from '@/services/states'
-import getSystem from '@/utils/get-system'
+import LogoSvg from "@/assets/image/logo.svg?react";
+import { BaseErrorBoundary } from "@/components/base";
+import { LayoutItem } from "@/components/layout/layout-item";
+import { NoticeManager } from "@/components/layout/notice-manager";
+import { UpdateButton } from "@/components/layout/update-button";
+import { UpdateSnackbar } from "@/components/layout/update-snackbar";
+import { WindowControls } from "@/components/layout/window-controller";
+import { useI18n } from "@/hooks/use-i18n";
+import { useVerge } from "@/hooks/use-verge";
+import { useWindowDecorations } from "@/hooks/use-window";
+import { useThemeMode } from "@/services/states";
+import getSystem from "@/utils/get-system";
 
 import {
   useCustomTheme,
   useLayoutEvents,
   useLoadingOverlay,
   useNavMenuOrder,
-} from './_layout/hooks'
-import { handleNoticeMessage } from './_layout/utils'
-import { navItems, sidebarNavItems } from './_routers'
-import LogsPage from './logs'
+} from "./_layout/hooks";
+import { handleNoticeMessage } from "./_layout/utils";
+import { navItems, sidebarNavItems } from "./_routers";
+import LogsPage from "./logs";
 
-import 'dayjs/locale/ru'
-import 'dayjs/locale/zh-cn'
+import "dayjs/locale/ru";
+import "dayjs/locale/zh-cn";
 
-export const portableFlag = false
+export const portableFlag = false;
 
-type NavItem = (typeof navItems)[number]
+type NavItem = (typeof navItems)[number];
 
-type MenuContextPosition = { top: number; left: number }
+type MenuContextPosition = { top: number; left: number };
 
 interface SortableNavMenuItemProps {
-  item: NavItem
-  label: string
+  item: NavItem;
+  label: string;
 }
 
 const SortableNavMenuItem = ({ item, label }: SortableNavMenuItemProps) => {
@@ -77,15 +61,15 @@ const SortableNavMenuItem = ({ item, label }: SortableNavMenuItemProps) => {
     isDragging,
   } = useSortable({
     id: item.path,
-  })
+  });
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-  }
+  };
 
   if (isDragging) {
-    style.zIndex = 100
+    style.zIndex = 100;
   }
 
   return (
@@ -102,35 +86,35 @@ const SortableNavMenuItem = ({ item, label }: SortableNavMenuItemProps) => {
     >
       {label}
     </LayoutItem>
-  )
-}
+  );
+};
 
-dayjs.extend(relativeTime)
+dayjs.extend(relativeTime);
 
-const OS = getSystem()
+const OS = getSystem();
 
 const Layout = () => {
-  const mode = useThemeMode()
-  const isDark = mode !== 'light'
-  const { t } = useTranslation()
-  const { theme } = useCustomTheme()
-  const { verge, mutateVerge, patchVerge } = useVerge()
-  const { language } = verge ?? {}
-  const navCollapsed = verge?.collapse_navbar ?? false
-  const { switchLanguage } = useI18n()
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
-  const isLogsPage = pathname === '/logs'
-  const logsPageMountedRef = useRef(false)
-  if (isLogsPage) logsPageMountedRef.current = true
-  const themeReady = useMemo(() => Boolean(theme), [theme])
+  const mode = useThemeMode();
+  const isDark = mode !== "light";
+  const { t } = useTranslation();
+  const { theme } = useCustomTheme();
+  const { verge, mutateVerge, patchVerge } = useVerge();
+  const { language } = verge ?? {};
+  const navCollapsed = verge?.collapse_navbar ?? false;
+  const { switchLanguage } = useI18n();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isLogsPage = pathname === "/logs";
+  const logsPageMountedRef = useRef(false);
+  if (isLogsPage) logsPageMountedRef.current = true;
+  const themeReady = useMemo(() => Boolean(theme), [theme]);
 
-  const [menuUnlocked, setMenuUnlocked] = useState(false)
+  const [menuUnlocked, setMenuUnlocked] = useState(false);
   const [menuContextPosition, setMenuContextPosition] =
-    useState<MenuContextPosition | null>(null)
+    useState<MenuContextPosition | null>(null);
 
-  const windowControlsRef = useRef<any>(null)
-  const { decorated } = useWindowDecorations()
+  const windowControlsRef = useRef<any>(null);
+  const { decorated } = useWindowDecorations();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -141,22 +125,22 @@ const Layout = () => {
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
-  )
+  );
 
   const handleMenuOrderOptimisticUpdate = useCallback(
     (order: string[]) => {
       mutateVerge(
         (prev) => (prev ? { ...prev, menu_order: order } : prev),
         false,
-      )
+      );
     },
     [mutateVerge],
-  )
+  );
 
   const handleMenuOrderPersist = useCallback(
     (order: string[]) => patchVerge({ menu_order: order }),
     [patchVerge],
-  )
+  );
 
   const {
     menuOrder,
@@ -170,40 +154,40 @@ const Layout = () => {
     storedOrder: verge?.menu_order,
     onOptimisticUpdate: handleMenuOrderOptimisticUpdate,
     onPersist: handleMenuOrderPersist,
-  })
+  });
 
   const handleMenuContextMenu = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
-      event.preventDefault()
-      event.stopPropagation()
-      setMenuContextPosition({ top: event.clientY, left: event.clientX })
+      event.preventDefault();
+      event.stopPropagation();
+      setMenuContextPosition({ top: event.clientY, left: event.clientX });
     },
     [],
-  )
+  );
 
   const handleMenuContextClose = useCallback(() => {
-    setMenuContextPosition(null)
-  }, [])
+    setMenuContextPosition(null);
+  }, []);
 
   const handleResetMenuOrder = useCallback(() => {
-    setMenuContextPosition(null)
-    void resetMenuOrder()
-  }, [resetMenuOrder])
+    setMenuContextPosition(null);
+    void resetMenuOrder();
+  }, [resetMenuOrder]);
 
   const handleUnlockMenu = useCallback(() => {
-    setMenuUnlocked(true)
-    setMenuContextPosition(null)
-  }, [])
+    setMenuUnlocked(true);
+    setMenuContextPosition(null);
+  }, []);
 
   const handleLockMenu = useCallback(() => {
-    setMenuUnlocked(false)
-    setMenuContextPosition(null)
-  }, [])
+    setMenuUnlocked(false);
+    setMenuContextPosition(null);
+  }, []);
 
   const handleToggleNavCollapsed = useCallback(() => {
-    setMenuContextPosition(null)
-    void patchVerge({ collapse_navbar: !navCollapsed })
-  }, [navCollapsed, patchVerge])
+    setMenuContextPosition(null);
+    void patchVerge({ collapse_navbar: !navCollapsed });
+  }, [navCollapsed, patchVerge]);
 
   const customTitlebar = useMemo(
     () =>
@@ -217,56 +201,57 @@ const Layout = () => {
         </div>
       ) : null,
     [decorated],
-  )
+  );
 
-  useLoadingOverlay(themeReady)
+  useLoadingOverlay(themeReady);
 
   const handleNotice = useCallback(
     (payload: [string, string]) => {
-      const [status, msg] = payload
+      const [status, msg] = payload;
       try {
-        handleNoticeMessage(status, msg, t, navigate)
+        handleNoticeMessage(status, msg, t, navigate);
       } catch (error) {
-        console.error('[通知处理] 失败:', error)
+        console.error("[通知处理] 失败:", error);
       }
     },
     [t, navigate],
-  )
+  );
 
-  useLayoutEvents(handleNotice)
+  useLayoutEvents(handleNotice);
 
   useEffect(() => {
     if (language) {
-      dayjs.locale(language === 'zh' ? 'zh-cn' : language)
-      switchLanguage(language)
+      dayjs.locale(language === "zh" ? "zh-cn" : language);
+      switchLanguage(language);
     }
-  }, [language, switchLanguage])
+  }, [language, switchLanguage]);
 
   if (!themeReady) {
     return (
       <div
         style={{
-          width: '100vw',
-          height: '100vh',
-          background: mode === 'light' ? '#fff' : '#181a1b',
-          transition: 'background 0.2s',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: mode === 'light' ? '#333' : '#fff',
+          width: "100vw",
+          height: "100vh",
+          background: mode === "light" ? "#fff" : "#181a1b",
+          transition: "background 0.2s",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: mode === "light" ? "#333" : "#fff",
         }}
       ></div>
-    )
+    );
   }
 
   return (
     <ThemeProvider theme={theme}>
       {/* 左侧底部窗口控制按钮 */}
       <NoticeManager position={verge?.notice_position} />
+      <UpdateSnackbar />
       <div
         style={{
-          animation: 'fadeIn 0.5s',
-          WebkitAnimation: 'fadeIn 0.5s',
+          animation: "fadeIn 0.5s",
+          WebkitAnimation: "fadeIn 0.5s",
         }}
       />
       <style>
@@ -280,29 +265,29 @@ const Layout = () => {
       <Paper
         square
         elevation={0}
-        className={`${OS} layout${navCollapsed ? ' layout--nav-collapsed' : ''}`}
+        className={`${OS} layout${navCollapsed ? " layout--nav-collapsed" : ""}`}
         style={{
-          borderTopLeftRadius: '0px',
-          borderTopRightRadius: '0px',
+          borderTopLeftRadius: "0px",
+          borderTopRightRadius: "0px",
         }}
         onContextMenu={(e) => {
-          if (
-            OS === 'windows' &&
-            !['input', 'textarea'].includes(
-              e.currentTarget.tagName.toLowerCase(),
-            ) &&
-            !e.currentTarget.isContentEditable
-          ) {
-            e.preventDefault()
+          // 禁用原生右键菜单（reload / 打开控制台等），但保留输入框、
+          // 可编辑区域的右键，方便复制粘贴。
+          const target = e.target as HTMLElement;
+          const tag = target.tagName.toLowerCase();
+          const editable =
+            tag === "input" || tag === "textarea" || target.isContentEditable;
+          if (!editable) {
+            e.preventDefault();
           }
         }}
         sx={[
           ({ palette }) => ({ bgcolor: palette.background.paper }),
-          OS === 'linux'
+          OS === "linux"
             ? {
-                borderRadius: '8px',
-                width: '100vw',
-                height: '100vh',
+                borderRadius: "8px",
+                width: "100vw",
+                height: "100vh",
               }
             : {},
         ]}
@@ -311,28 +296,29 @@ const Layout = () => {
         {customTitlebar}
 
         <div className="layout-content">
-          <div className="layout-content__left">
+          {/* 暂时不需要sidebar */}
+          {/* <div className="layout-content__left">
             <div className="the-logo" data-tauri-drag-region="false">
               <div
                 data-tauri-drag-region="true"
                 style={{
-                  height: '27px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
+                  height: "27px",
+                  display: "flex",
+                  justifyContent: "space-between",
                 }}
               >
                 <SvgIcon
                   component={isDark ? iconDark : iconLight}
                   style={{
-                    height: '36px',
-                    width: '36px',
-                    marginTop: '-3px',
-                    marginRight: '5px',
-                    marginLeft: '-3px',
+                    height: "36px",
+                    width: "36px",
+                    marginTop: "-3px",
+                    marginRight: "5px",
+                    marginLeft: "-3px",
                   }}
                   inheritViewBox
                 />
-                <LogoSvg fill={isDark ? 'white' : 'black'} />
+                <LogoSvg fill={isDark ? "white" : "black"} />
               </div>
               <UpdateButton className="the-newbtn" />
             </div>
@@ -342,21 +328,21 @@ const Layout = () => {
                 sx={(theme) => ({
                   px: 1.5,
                   py: 0.75,
-                  mx: 'auto',
+                  mx: "auto",
                   mb: 1,
                   maxWidth: 250,
                   borderRadius: 1.5,
                   fontSize: 12,
                   fontWeight: 600,
-                  textAlign: 'center',
+                  textAlign: "center",
                   color: theme.palette.warning.contrastText,
                   bgcolor:
-                    theme.palette.mode === 'light'
+                    theme.palette.mode === "light"
                       ? theme.palette.warning.main
                       : theme.palette.warning.dark,
                 })}
               >
-                {t('layout.components.navigation.menu.reorderMode')}
+                {t("layout.components.navigation.menu.reorderMode")}
               </Box>
             )}
 
@@ -372,9 +358,9 @@ const Layout = () => {
                     onContextMenu={handleMenuContextMenu}
                   >
                     {menuOrder.map((path) => {
-                      const item = navItemMap.get(path)
+                      const item = navItemMap.get(path);
                       if (!item) {
-                        return null
+                        return null;
                       }
                       return (
                         <SortableNavMenuItem
@@ -382,7 +368,7 @@ const Layout = () => {
                           item={item}
                           label={t(item.label)}
                         />
-                      )
+                      );
                     })}
                   </List>
                 </SortableContext>
@@ -390,15 +376,15 @@ const Layout = () => {
             ) : (
               <List className="the-menu" onContextMenu={handleMenuContextMenu}>
                 {menuOrder.map((path) => {
-                  const item = navItemMap.get(path)
+                  const item = navItemMap.get(path);
                   if (!item) {
-                    return null
+                    return null;
                   }
                   return (
                     <LayoutItem key={item.path} to={item.path} icon={item.icon}>
                       {t(item.label)}
                     </LayoutItem>
-                  )
+                  );
                 })}
               </List>
             )}
@@ -424,30 +410,30 @@ const Layout = () => {
             >
               <MenuItem onClick={handleToggleNavCollapsed} dense>
                 {navCollapsed
-                  ? t('layout.components.navigation.menu.expandNavBar')
-                  : t('layout.components.navigation.menu.collapseNavBar')}
+                  ? t("layout.components.navigation.menu.expandNavBar")
+                  : t("layout.components.navigation.menu.collapseNavBar")}
               </MenuItem>
               <MenuItem
                 onClick={menuUnlocked ? handleLockMenu : handleUnlockMenu}
                 dense
               >
                 {menuUnlocked
-                  ? t('layout.components.navigation.menu.lock')
-                  : t('layout.components.navigation.menu.unlock')}
+                  ? t("layout.components.navigation.menu.lock")
+                  : t("layout.components.navigation.menu.unlock")}
               </MenuItem>
               <MenuItem
                 onClick={handleResetMenuOrder}
                 dense
                 disabled={isDefaultOrder}
               >
-                {t('layout.components.navigation.menu.restoreDefaultOrder')}
+                {t("layout.components.navigation.menu.restoreDefaultOrder")}
               </MenuItem>
             </Menu>
 
             <div className="the-traffic">
               <LayoutTraffic />
             </div>
-          </div>
+          </div> */}
 
           <div className="layout-content__right">
             <div className="the-bar"></div>
@@ -458,12 +444,12 @@ const Layout = () => {
               {logsPageMountedRef.current && (
                 <div
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     top: 0,
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    display: isLogsPage ? undefined : 'none',
+                    display: isLogsPage ? undefined : "none",
                   }}
                 >
                   <LogsPage />
@@ -474,7 +460,7 @@ const Layout = () => {
         </div>
       </Paper>
     </ThemeProvider>
-  )
-}
+  );
+};
 
-export default Layout
+export default Layout;

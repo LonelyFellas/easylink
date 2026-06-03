@@ -424,6 +424,10 @@
     },
     "update": {
       "title": "新版本 v{{version}}",
+      "snackbar": {
+        "title": "New version available",
+        "subtitle": "v{{version}} · Click to view"
+      },
       "actions": {
         "goToRelease": "前往發佈頁面",
         "update": "更新"

@@ -1,7 +1,6 @@
 /* eslint-disable @eslint-react/set-state-in-effect */
 import {
   AccessTimeRounded,
-  ChevronRight,
   NetworkCheckRounded,
   WifiOff as SignalError,
   SignalWifi3Bar as SignalGood,
@@ -14,7 +13,6 @@ import {
 } from '@mui/icons-material'
 import {
   Box,
-  Button,
   Chip,
   FormControl,
   IconButton,
@@ -30,7 +28,6 @@ import {
 import { useLockFn } from 'ahooks'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
 import { delayGroup, healthcheckProxyProvider } from 'tauri-plugin-mihomo-api'
 
 import { EnhancedCard } from '@/components/home/enhanced-card'
@@ -125,7 +122,6 @@ function getSignalIcon(delay: number): {
 
 export const CurrentProxyCard = () => {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const theme = useTheme()
   const { proxies } = useProxiesData()
   const { session } = useAuth()
@@ -529,10 +525,10 @@ export const CurrentProxyCard = () => {
     ],
   )
 
-  // 导航到代理页面
-  const goToProxies = useCallback(() => {
-    navigate('/proxies')
-  }, [navigate])
+  // 先关闭：「代理 ›」按钮已隐藏，恢复时需一并恢复此函数与 Button/ChevronRight 导入
+  // const goToProxies = useCallback(() => {
+  //   navigate('/proxies')
+  // }, [navigate])
 
   // 获取要显示的代理节点
   const currentProxy = useMemo(() => {
@@ -950,6 +946,7 @@ export const CurrentProxyCard = () => {
               {getSortIcon()}
             </IconButton>
           </Tooltip>
+          {/* 先关闭：跳转代理页的「代理 ›」按钮
           <Button
             variant="outlined"
             size="small"
@@ -959,6 +956,7 @@ export const CurrentProxyCard = () => {
           >
             {t('layout.components.navigation.tabs.proxies')}
           </Button>
+          */}
         </Box>
       }
     >
@@ -984,6 +982,7 @@ export const CurrentProxyCard = () => {
                 {currentProxy.name}
               </Typography>
 
+              {/* 先关闭：节点协议类型（如 ShadowsocksR）+ UDP/TFO 等特性标签
               <Box
                 sx={{
                   display: 'flex',
@@ -1014,7 +1013,6 @@ export const CurrentProxyCard = () => {
                     sx={{ mr: 0.5 }}
                   />
                 )}
-                {/* 节点特性 */}
                 {currentProxy.udp && (
                   <Chip size="small" label="UDP" variant="outlined" />
                 )}
@@ -1031,6 +1029,7 @@ export const CurrentProxyCard = () => {
                   <Chip size="small" label="SMUX" variant="outlined" />
                 )}
               </Box>
+              */}
             </Box>
 
             {/* 显示延迟 */}

@@ -424,6 +424,10 @@
     },
     "update": {
       "title": "New Version v{{version}}",
+      "snackbar": {
+        "title": "New version available",
+        "subtitle": "v{{version}} · Click to view"
+      },
       "actions": {
         "goToRelease": "Zur Veröffentlichungsseite gehen",
         "update": "Aktualisieren"

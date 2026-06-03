@@ -424,6 +424,10 @@
     },
     "update": {
       "title": "Новая версия v{{version}}",
+      "snackbar": {
+        "title": "New version available",
+        "subtitle": "v{{version}} · Click to view"
+      },
       "actions": {
         "goToRelease": "Перейти на страницу релизов",
         "update": "Обновить"
