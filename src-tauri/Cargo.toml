@@ -1,11 +1,11 @@
 [package]
-name = "clash-verge"
+name = "easylink"
 version = "1.0.8"
 description = "clash verge"
 authors = ["zzzgydi", "Tunglies", "wonfen", "MystiPanda"]
 license = "GPL-3.0-only"
 repository = "https://github.com/clash-verge-rev/clash-verge-rev.git"
-default-run = "clash-verge"
+default-run = "easylink"
 build = "build.rs"
 edition = "2024"
 rust-version = "1.91"

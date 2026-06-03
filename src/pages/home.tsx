@@ -50,11 +50,6 @@ const LazyIpInfoCard = lazy(() =>
     default: module.IpInfoCard,
   })),
 )
-const LazyClashInfoCard = lazy(() =>
-  import('@/components/home/clash-info-card').then((module) => ({
-    default: module.ClashInfoCard,
-  })),
-)
 const LazySystemInfoCard = lazy(() =>
   import('@/components/home/system-info-card').then((module) => ({
     default: module.SystemInfoCard,
@@ -175,15 +170,6 @@ const HomeSettingsDialog = ({
           <FormControlLabel
             control={
               <Checkbox
-                checked={cards.clashinfo || false}
-                onChange={() => handleToggle('clashinfo')}
-              />
-            }
-            label={t('home.page.settings.cards.clashInfo')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
                 checked={cards.systeminfo || false}
                 onChange={() => handleToggle('systeminfo')}
               />
@@ -282,6 +268,12 @@ const HomePage = () => {
     () => [
       renderCard('proxy', <CurrentProxyCard />),
       renderCard('network', <NetworkSettingsCard />),
+      renderCard(
+        'ip',
+        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
+          <LazyIpInfoCard />
+        </Suspense>,
+      ),
       renderCard('mode', <ClashModeEnhancedCard />),
     ],
     [renderCard],
@@ -325,18 +317,6 @@ const HomePage = () => {
         'test',
         <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
           <LazyTestCard />
-        </Suspense>,
-      ),
-      renderCard(
-        'ip',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazyIpInfoCard />
-        </Suspense>,
-      ),
-      renderCard(
-        'clashinfo',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazyClashInfoCard />
         </Suspense>,
       ),
       renderCard(
