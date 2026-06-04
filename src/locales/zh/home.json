@@ -27,6 +27,38 @@
     "title": "首页"
   },
   "components": {
+    "loginStatus": {
+      "title": "登录状态",
+      "statuses": {
+        "loggedIn": "已登录"
+      },
+      "labels": {
+        "account": "当前账号",
+        "expireTime": "到期时间",
+        "normalUser": "普通用户"
+      },
+      "actions": {
+        "recharge": "充值",
+        "refreshDetail": "刷新用户详情"
+      }
+    },
+    "membership": {
+      "title": "会员套餐",
+      "subtitle": {
+        "active": "{{tier}} 已开启 · SVIP 可升级解锁高速线路",
+        "inactive": "开通会员解锁高速线路"
+      },
+      "tiers": {
+        "vip": "高速稳定线路",
+        "svip": "专属高速线路 · 更低延迟"
+      },
+      "labels": {
+        "current": "当前"
+      },
+      "actions": {
+        "upgrade": "升级"
+      }
+    },
     "proxyTun": {
       "status": {
         "systemProxyEnabled": "系统代理已启用，您的应用将通过代理访问网络",

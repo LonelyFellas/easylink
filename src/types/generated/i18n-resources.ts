@@ -138,6 +138,38 @@ export interface TranslationResources {
           }
           title: string
         }
+        loginStatus: {
+          actions: {
+            recharge: string
+            refreshDetail: string
+          }
+          labels: {
+            account: string
+            expireTime: string
+            normalUser: string
+          }
+          statuses: {
+            loggedIn: string
+          }
+          title: string
+        }
+        membership: {
+          actions: {
+            upgrade: string
+          }
+          labels: {
+            current: string
+          }
+          subtitle: {
+            active: string
+            inactive: string
+          }
+          tiers: {
+            svip: string
+            vip: string
+          }
+          title: string
+        }
         proxyTun: {
           status: {
             systemProxyDisabled: string

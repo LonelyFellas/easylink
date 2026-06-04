@@ -9,6 +9,7 @@ import {
   useTheme,
 } from '@mui/material'
 import { useLockFn } from 'ahooks'
+import { useTranslation } from 'react-i18next'
 
 import { useAuth } from '@/providers/auth-context'
 import { openRecharge } from '@/services/recharge'
@@ -18,17 +19,30 @@ import { EnhancedCard } from './enhanced-card'
 interface Tier {
   key: string
   label: string
-  desc: string
+  descKey:
+    | 'home.components.membership.tiers.vip'
+    | 'home.components.membership.tiers.svip'
   rank: number
 }
 
 const TIERS: Tier[] = [
-  { key: 'vip', label: 'VIP', desc: '高速稳定线路', rank: 1 },
-  { key: 'svip', label: 'SVIP', desc: '专属高速线路 · 更低延迟', rank: 2 },
+  {
+    key: 'vip',
+    label: 'VIP',
+    descKey: 'home.components.membership.tiers.vip',
+    rank: 1,
+  },
+  {
+    key: 'svip',
+    label: 'SVIP',
+    descKey: 'home.components.membership.tiers.svip',
+    rank: 2,
+  },
 ]
 
 export const MembershipCard = () => {
   const theme = useTheme()
+  const { t } = useTranslation()
   const { userDetail, session } = useAuth()
 
   const upgrade = useLockFn(() => openRecharge())
@@ -37,12 +51,14 @@ export const MembershipCard = () => {
   const currentRank = TIERS.find((tier) => tier.key === currentKey)?.rank ?? 0
 
   const subtitle = currentKey
-    ? `${currentKey.toUpperCase()} 已开启 · SVIP 可升级解锁高速线路`
-    : '开通会员解锁高速线路'
+    ? t('home.components.membership.subtitle.active', {
+        tier: currentKey.toUpperCase(),
+      })
+    : t('home.components.membership.subtitle.inactive')
 
   return (
     <EnhancedCard
-      title="会员套餐"
+      title={t('home.components.membership.title')}
       icon={<WorkspacePremiumOutlined />}
       iconColor="warning"
     >
@@ -86,14 +102,14 @@ export const MembershipCard = () => {
                   {active && (
                     <Chip
                       size="small"
-                      label="当前"
+                      label={t('home.components.membership.labels.current')}
                       color="primary"
                       sx={{ height: 20 }}
                     />
                   )}
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
-                  {tier.desc}
+                  {t(tier.descKey)}
                 </Typography>
                 {upgradable && (
                   <Button
@@ -102,7 +118,7 @@ export const MembershipCard = () => {
                     onClick={upgrade}
                     sx={{ borderRadius: 1.5, mt: 'auto' }}
                   >
-                    升级
+                    {t('home.components.membership.actions.upgrade')}
                   </Button>
                 )}
               </Box>

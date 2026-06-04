@@ -27,6 +27,38 @@
     "title": "홈"
   },
   "components": {
+    "loginStatus": {
+      "title": "Login Status",
+      "statuses": {
+        "loggedIn": "Logged In"
+      },
+      "labels": {
+        "account": "Account",
+        "expireTime": "Expire Time",
+        "normalUser": "Normal"
+      },
+      "actions": {
+        "recharge": "Recharge",
+        "refreshDetail": "Refresh user details"
+      }
+    },
+    "membership": {
+      "title": "Membership",
+      "subtitle": {
+        "active": "{{tier}} enabled · Upgrade to SVIP to unlock high-speed lines",
+        "inactive": "Subscribe to unlock high-speed lines"
+      },
+      "tiers": {
+        "vip": "High-speed stable lines",
+        "svip": "Dedicated high-speed lines · Lower latency"
+      },
+      "labels": {
+        "current": "Current"
+      },
+      "actions": {
+        "upgrade": "Upgrade"
+      }
+    },
     "proxyTun": {
       "status": {
         "systemProxyEnabled": "시스템 프록시가 활성화되었습니다. 애플리케이션이 프록시를 통해 네트워크에 접근합니다",

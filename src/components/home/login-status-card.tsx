@@ -15,6 +15,7 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useLockFn } from 'ahooks'
 import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
 
 import { useAuth } from '@/providers/auth-context'
 import { openRecharge } from '@/services/recharge'
@@ -43,34 +44,35 @@ const formatExpiry = (value?: string) => {
   return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : value
 }
 
-const cardTitle = (
-  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-    <Typography variant="h6" sx={{ fontWeight: 'medium', fontSize: 18 }}>
-      登录状态
-    </Typography>
-    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-      <Box
-        sx={{
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
-          bgcolor: 'success.main',
-          mr: 0.5,
-        }}
-      />
-      <Typography
-        variant="caption"
-        color="success.main"
-        sx={{ fontWeight: 'medium' }}
-      >
-        已登录
-      </Typography>
-    </Box>
-  </Box>
-)
-
 export const LoginStatusCard = () => {
+  const { t } = useTranslation()
   const { userDetail, refreshUserDetail, session } = useAuth()
+
+  const cardTitle = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+      <Typography variant="h6" sx={{ fontWeight: 'medium', fontSize: 18 }}>
+        {t('home.components.loginStatus.title')}
+      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+        <Box
+          sx={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            bgcolor: 'success.main',
+            mr: 0.5,
+          }}
+        />
+        <Typography
+          variant="caption"
+          color="success.main"
+          sx={{ fontWeight: 'medium' }}
+        >
+          {t('home.components.loginStatus.statuses.loggedIn')}
+        </Typography>
+      </Box>
+    </Box>
+  )
   const {
     mutateAsync: refreshUserDetailMutation,
     isPending: isRefreshingUserDetail,
@@ -96,7 +98,7 @@ export const LoginStatusCard = () => {
           <IconButton
             loading={isRefreshingUserDetail}
             onClick={() => refreshUserDetailMutation()}
-            title="刷新用户详情"
+            title={t('home.components.loginStatus.actions.refreshDetail')}
             disabled={isRefreshingUserDetail}
           >
             {isRefreshingUserDetail ? (
@@ -112,7 +114,7 @@ export const LoginStatusCard = () => {
             onClick={recharge}
             sx={{ borderRadius: 1.5 }}
           >
-            充值
+            {t('home.components.loginStatus.actions.recharge')}:
           </Button>
         </Box>
       }
@@ -124,7 +126,7 @@ export const LoginStatusCard = () => {
             color="text.secondary"
             sx={{ flexShrink: 0 }}
           >
-            当前账号
+            {t('home.components.loginStatus.labels.account')}:
           </Typography>
           <Typography
             variant="body2"
@@ -140,7 +142,11 @@ export const LoginStatusCard = () => {
           </Typography>
           <Chip
             size="small"
-            label={vipType ? vipType.toUpperCase() : '普通用户'}
+            label={
+              vipType
+                ? vipType.toUpperCase()
+                : t('home.components.loginStatus.labels.normalUser')
+            }
             color={
               vipType
                 ? (VIP_COLOR_MAP[vipType.toLowerCase()] ?? 'default')
@@ -156,7 +162,7 @@ export const LoginStatusCard = () => {
             color="text.secondary"
             sx={{ flexShrink: 0 }}
           >
-            到期时间
+            {t('home.components.loginStatus.labels.expireTime')}:
           </Typography>
           <Typography
             variant="body2"

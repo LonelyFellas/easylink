@@ -27,6 +27,38 @@
     "title": "Startseite"
   },
   "components": {
+    "loginStatus": {
+      "title": "Login Status",
+      "statuses": {
+        "loggedIn": "Logged In"
+      },
+      "labels": {
+        "account": "Account",
+        "expireTime": "Expire Time",
+        "normalUser": "Normal"
+      },
+      "actions": {
+        "recharge": "Recharge",
+        "refreshDetail": "Refresh user details"
+      }
+    },
+    "membership": {
+      "title": "Membership",
+      "subtitle": {
+        "active": "{{tier}} enabled · Upgrade to SVIP to unlock high-speed lines",
+        "inactive": "Subscribe to unlock high-speed lines"
+      },
+      "tiers": {
+        "vip": "High-speed stable lines",
+        "svip": "Dedicated high-speed lines · Lower latency"
+      },
+      "labels": {
+        "current": "Current"
+      },
+      "actions": {
+        "upgrade": "Upgrade"
+      }
+    },
     "proxyTun": {
       "status": {
         "systemProxyEnabled": "Der Systemproxy ist aktiviert. Ihre Anwendungen werden über den Proxy auf das Netzwerk zugreifen.",
