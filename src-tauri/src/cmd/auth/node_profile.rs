@@ -124,13 +124,17 @@ fn build_proxy_groups(node_names: &[String]) -> Vec<Value> {
 }
 
 fn build_rules() -> Vec<Value> {
-    // 用 IP-CIDR 让私网/本机直连，其余全部走 PROXY。
-    // 不用 GEOIP/GEOSITE，避免对 MMDB/geosite 数据库的依赖导致校验失败。
+    // 真正的「规则分流」：私网/本机 + 国内域名/IP 直连，其余走 PROXY。
+    // GEOSITE/GEOIP 依赖 geosite.dat / geoip.dat / Country.mmdb，这三份资源已由
+    // `init_resources()` 拷贝到 mihomo 工作目录，开箱即用，不会因缺库校验失败。
     vec![
         "IP-CIDR,127.0.0.0/8,DIRECT,no-resolve".into(),
         "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve".into(),
         "IP-CIDR,172.16.0.0/12,DIRECT,no-resolve".into(),
         "IP-CIDR,192.168.0.0/16,DIRECT,no-resolve".into(),
+        // 国内域名/IP 直连，境外走代理
+        "GEOSITE,cn,DIRECT".into(),
+        "GEOIP,CN,DIRECT,no-resolve".into(),
         format!("MATCH,{DEFAULT_PROXY_GROUP}").into(),
     ]
 }
@@ -208,6 +212,26 @@ mod tests {
         assert_eq!(group_proxies.len(), 3);
         assert_eq!(group_proxies[0].as_str(), Some("HK"));
         assert_eq!(group_proxies[2].as_str(), Some("DIRECT"));
+    }
+
+    #[test]
+    fn rules_split_cn_direct_before_match() {
+        let yaml = build_mihomo_yaml(&[sample_node("HK", "7184")], "u").unwrap();
+        let parsed: serde_yaml_ng::Value = serde_yaml_ng::from_str(&yaml).unwrap();
+        let rules: Vec<&str> = parsed["rules"]
+            .as_sequence()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        // 国内分流规则存在
+        assert!(rules.contains(&"GEOSITE,cn,DIRECT"));
+        assert!(rules.contains(&"GEOIP,CN,DIRECT,no-resolve"));
+        // 兜底 MATCH 必须在最后
+        assert_eq!(*rules.last().unwrap(), "MATCH,PROXY");
+        let cn = rules.iter().position(|r| *r == "GEOSITE,cn,DIRECT").unwrap();
+        let m = rules.iter().position(|r| r.starts_with("MATCH")).unwrap();
+        assert!(cn < m, "国内直连规则必须排在 MATCH 兜底之前");
     }
 
     #[test]

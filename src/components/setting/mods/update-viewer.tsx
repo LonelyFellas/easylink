@@ -1,6 +1,5 @@
-import { alpha, Box, Button, LinearProgress } from '@mui/material'
+import { alpha, Box, LinearProgress } from '@mui/material'
 import { relaunch } from '@tauri-apps/plugin-process'
-import { open as openUrl } from '@tauri-apps/plugin-shell'
 import type { DownloadEvent } from '@tauri-apps/plugin-updater'
 import { useLockFn } from 'ahooks'
 import type { Ref } from 'react'
@@ -223,7 +222,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
               version: updateInfo?.version ?? '',
             })}
           </Box>
-          <Button
+          {/* <Button
             variant="contained"
             size="small"
             sx={{ whiteSpace: 'nowrap' }}
@@ -234,7 +233,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
             }}
           >
             {t('settings.modals.update.actions.goToRelease')}
-          </Button>
+          </Button> */}
         </Box>
       }
       contentSx={{
