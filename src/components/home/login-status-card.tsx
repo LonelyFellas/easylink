@@ -114,7 +114,7 @@ export const LoginStatusCard = () => {
             onClick={recharge}
             sx={{ borderRadius: 1.5 }}
           >
-            {t('home.components.loginStatus.actions.recharge')}:
+            {t('home.components.loginStatus.actions.recharge')}
           </Button>
         </Box>
       }
