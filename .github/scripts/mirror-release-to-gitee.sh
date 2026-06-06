@@ -183,8 +183,19 @@ upload_one() {
 }
 export -f upload_one
 
+# 大文件优先：按字节降序排列待传列表，让最大的文件最先进并发池，
+# 避免最后只剩一个大文件单连接慢传拖尾（缩短整体 makespan）。
 if [ -s "${UPLOAD_LIST}" ]; then
-  echo "  并发 ${PARALLEL} 个上传 ..."
+  SORTED="$(mktemp)"
+  while IFS= read -r f; do
+    [ -f "${f}" ] || continue
+    printf '%s\t%s\n' "$(file_size "${f}")" "${f}"
+  done < "${UPLOAD_LIST}" | sort -rn | cut -f2- > "${SORTED}"
+  mv "${SORTED}" "${UPLOAD_LIST}"
+fi
+
+if [ -s "${UPLOAD_LIST}" ]; then
+  echo "  并发 ${PARALLEL} 个上传（大文件优先）..."
   xargs -P "${PARALLEL}" -I {} bash -c 'upload_one "$@"' _ {} < "${UPLOAD_LIST}"
 fi
 

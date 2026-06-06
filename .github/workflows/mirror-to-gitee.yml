@@ -75,6 +75,19 @@ jobs:
           : "${GITEE_TOKEN:?请在仓库 Settings → Secrets and variables → Actions → Secrets 配置 GITEE_TOKEN}"
           echo "Gitee 目标：${GITEE_OWNER}/${GITEE_REPO}（分支 ${GITEE_BRANCH}）"
 
+      - name: 优化跨境上传网络（BBR + 大 TCP 缓冲）
+        if: steps.resolve.outputs.skip != '1'
+        run: |
+          # 跨境上传是高 RTT + 有丢包链路，默认 CUBIC 一丢包就砍窗口、吞吐被锁死。
+          # 换 BBR（不靠丢包判拥塞）+ 加大发送缓冲填满管道，单连接吞吐常能翻倍。
+          sudo modprobe tcp_bbr 2>/dev/null || true
+          sudo sysctl -w net.core.default_qdisc=fq || true
+          sudo sysctl -w net.ipv4.tcp_congestion_control=bbr || true
+          sudo sysctl -w net.core.wmem_max=67108864 || true
+          sudo sysctl -w net.core.rmem_max=67108864 || true
+          sudo sysctl -w net.ipv4.tcp_wmem='4096 87380 67108864' || true
+          echo "当前拥塞控制：$(sysctl -n net.ipv4.tcp_congestion_control)"
+
       - name: 同步到 Gitee
         if: steps.resolve.outputs.skip != '1'
         run: bash .github/scripts/mirror-release-to-gitee.sh "${{ steps.resolve.outputs.tag }}"
