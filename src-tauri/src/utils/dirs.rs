@@ -221,19 +221,22 @@ pub fn ensure_mihomo_safe_dir() -> Option<PathBuf> {
 
 #[cfg(unix)]
 pub fn ipc_path() -> Result<PathBuf> {
+    // 套接字文件名按 EasyLink 命名，避免与官方 Clash Verge 共用
+    // /tmp/verge/verge-mihomo.sock 而互相抢占导致「内核通信错误」。
+    // 父目录沿用 verge（由特权服务创建），仅区分文件名以降低风险。
     ensure_mihomo_safe_dir()
-        .map(|base_dir| base_dir.join("verge").join("verge-mihomo.sock"))
+        .map(|base_dir| base_dir.join("verge").join("easylink-mihomo.sock"))
         .or_else(|| {
             app_home_dir()
                 .ok()
-                .map(|dir| dir.join("verge").join("verge-mihomo.sock"))
+                .map(|dir| dir.join("verge").join("easylink-mihomo.sock"))
         })
         .ok_or_else(|| anyhow::anyhow!("Failed to determine ipc path"))
 }
 
 #[cfg(target_os = "windows")]
 pub fn ipc_path() -> Result<PathBuf> {
-    Ok(PathBuf::from(r"\\.\pipe\verge-mihomo"))
+    Ok(PathBuf::from(r"\\.\pipe\easylink-mihomo"))
 }
 #[async_trait]
 pub trait PathBufExec {
