@@ -1,4 +1,7 @@
-import { WorkspacePremiumOutlined } from '@mui/icons-material'
+import {
+  AccountBalanceWalletOutlined,
+  WorkspacePremiumOutlined,
+} from '@mui/icons-material'
 import {
   Box,
   Button,
@@ -61,6 +64,17 @@ export const MembershipCard = () => {
       title={t('home.components.membership.title')}
       icon={<WorkspacePremiumOutlined />}
       iconColor="warning"
+      action={
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<AccountBalanceWalletOutlined />}
+          onClick={upgrade}
+          sx={{ borderRadius: 1.5 }}
+        >
+          {t('home.components.loginStatus.actions.recharge')}
+        </Button>
+      }
     >
       <Stack spacing={1.5}>
         <Typography variant="body2" color="text.secondary">

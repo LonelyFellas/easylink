@@ -33,6 +33,36 @@ const GITHUB_ALERTS = {
 
 type GitHubAlertType = keyof typeof GITHUB_ALERTS
 
+// 版本号标题，如「## v1.1.2」「# 1.1.2」
+const VERSION_HEADING_PATTERN = /^#{1,6}\s+v?\d+\.\d+(?:\.\d+)?/i
+
+/**
+ * 只保留 body 中最新（最顶部）那个版本的更新内容，剔除历史版本记录。
+ * - 无版本标题：视为单版本说明，原样返回。
+ * - 顶部就是版本标题：历史从第二个标题开始。
+ * - 顶部有正文、之后才出现标题：该正文即最新版，历史从第一个标题开始。
+ */
+const pickLatestVersionSection = (raw: string): string => {
+  const lines = raw.split('\n')
+  const headings = lines.reduce<number[]>((acc, line, i) => {
+    if (VERSION_HEADING_PATTERN.test(line.trim())) acc.push(i)
+    return acc
+  }, [])
+  if (headings.length === 0) return raw.trim()
+
+  const hasLeadingBody = lines.slice(0, headings[0]).join('').trim().length > 0
+  const historyStart = hasLeadingBody ? headings[0] : headings[1]
+  const section =
+    historyStart === undefined ? lines.slice() : lines.slice(0, historyStart)
+  // 去掉顶部的版本号标题，避免与弹窗标题里的版本号重复
+  if (
+    section[0] !== undefined &&
+    VERSION_HEADING_PATTERN.test(section[0].trim())
+  )
+    section.shift()
+  return section.join('\n').trim()
+}
+
 const GITHUB_ALERT_PATTERN =
   /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][\t ]*\n?/i
 const GITHUB_ALERT_CLASS_PATTERN =
@@ -127,19 +157,18 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
     close: () => setOpen(false),
   }))
 
-  const markdownContent = useMemo(() => {
-    if (!updateInfo?.body) {
-      return 'New Version is available'
-    }
-    return updateInfo?.body
-  }, [updateInfo])
+  // 仅当前版本的更新说明：剔除历史版本，break change 判断也只看当前版本
+  const currentNotes = useMemo(
+    () => (updateInfo?.body ? pickLatestVersionSection(updateInfo.body) : ''),
+    [updateInfo],
+  )
 
-  const breakChangeFlag = useMemo(() => {
-    if (!updateInfo?.body) {
-      return false
-    }
-    return updateInfo?.body.toLowerCase().includes('break change')
-  }, [updateInfo])
+  const markdownContent = currentNotes || 'New Version is available'
+
+  const breakChangeFlag = useMemo(
+    () => currentNotes.toLowerCase().includes('break change'),
+    [currentNotes],
+  )
 
   const onUpdate = useLockFn(async () => {
     if (portableFlag) {

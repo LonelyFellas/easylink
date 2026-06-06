@@ -42,6 +42,9 @@
         inset: 0;
         background: var(--bg-color);
         z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         transition: opacity 0.2s ease-out;
       }
 
@@ -49,10 +52,64 @@
         opacity: 0;
         pointer-events: none;
       }
+
+      .initial-loading-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+
+      .initial-loading-logo {
+        width: 160px;
+        height: auto;
+        animation: initial-loading-pulse 1.4s ease-in-out infinite;
+      }
+
+      .initial-loading-spinner {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 3px solid rgba(127, 127, 127, 0.25);
+        border-top-color: #f5811f;
+        animation: initial-loading-spin 0.8s linear infinite;
+      }
+
+      @keyframes initial-loading-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes initial-loading-pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.55;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .initial-loading-logo,
+        .initial-loading-spinner {
+          animation: none;
+        }
+      }
     </style>
   </head>
   <body>
-    <div id="initial-loading-overlay"></div>
+    <div id="initial-loading-overlay">
+      <div class="initial-loading-content">
+        <img
+          class="initial-loading-logo"
+          src="./assets/image/logo_text.png"
+          alt="Easy Link"
+        />
+        <div class="initial-loading-spinner"></div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="./main.tsx"></script>
   </body>

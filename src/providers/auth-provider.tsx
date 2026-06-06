@@ -24,16 +24,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUserDetail(result)
     return result
   }, [])
+
+  // 登录后刷新详情：失败也不阻断登录流程（卡片会回退到 session）
+  const safeFetchUserDetail = useCallback(
+    async (userId: string) => {
+      try {
+        await fetchUserDetail(userId)
+      } catch (error) {
+        console.warn('[AuthProvider] 拉取个人详情失败:', error)
+      }
+    },
+    [fetchUserDetail],
+  )
+
+  // 设置会话并按新账号刷新详情：三个登录入口共用，确保切换账号时
+  // userDetail 与 session 同步更新（卡片优先展示 userDetail）。
+  const applySession = useCallback(
+    async (next: IAuthSession) => {
+      setSession(next)
+      if (next?.id) await safeFetchUserDetail(next.id.toString())
+      return next
+    },
+    [safeFetchUserDetail],
+  )
+
   useEffect(() => {
     let active = true
     authGetSession()
       .then((s) => {
-        if (active) {
-          setSession(s)
-          if (s?.id) {
-            fetchUserDetail(s.id.toString())
-          }
-        }
+        // 详情后追，不阻塞 isLoading：避免起动时多等一次 getUserInfo 往返
+        if (active && s) void applySession(s)
       })
       .catch((error) => {
         console.error('[AuthProvider] 读取会话失败:', error)
@@ -44,7 +64,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       active = false
     }
-  }, [fetchUserDetail])
+  }, [applySession])
 
   const refreshUserDetail = useCallback(async () => {
     if (!session?.id) return
@@ -59,23 +79,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [session, fetchUserDetail])
 
-  const login = useCallback(async (username: string, password: string) => {
-    const next = await authLogin(username, { password })
-    setSession(next)
-    return next
-  }, [])
+  const login = useCallback(
+    (username: string, password: string) =>
+      authLogin(username, { password }).then(applySession),
+    [applySession],
+  )
 
-  const loginByCode = useCallback(async (phone: string, code: string) => {
-    const next = await authLogin(phone, { code })
-    setSession(next)
-    return next
-  }, [])
+  const loginByCode = useCallback(
+    (phone: string, code: string) =>
+      authLogin(phone, { code }).then(applySession),
+    [applySession],
+  )
 
-  const register = useCallback(async (params: IAuthRegister) => {
-    const next = await authRegister({ ...params })
-    setSession(next)
-    return next
-  }, [])
+  const register = useCallback(
+    (params: IAuthRegister) => authRegister({ ...params }).then(applySession),
+    [applySession],
+  )
 
   const logout = useCallback(async () => {
     // 退出登录时自动关闭代理：关系统代理 + 关 TUN，避免登出后仍走客户端代理
@@ -89,6 +108,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     await authLogout()
     setSession(null)
+    // 清掉上个账号的详情缓存，避免下次登录前/登录中卡片闪现旧账号信息
+    setUserDetail(null)
   }, [])
 
   const getSmsCode = useCallback(async (phone: string) => {

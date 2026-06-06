@@ -1,5 +1,5 @@
 import {
-  AccountBalanceWalletOutlined,
+  LogoutRounded,
   PersonOutlineRounded,
   RefreshRounded,
 } from '@mui/icons-material'
@@ -15,10 +15,12 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useLockFn } from 'ahooks'
 import dayjs from 'dayjs'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { BaseDialog } from '@/components/base'
 import { useAuth } from '@/providers/auth-context'
-import { openRecharge } from '@/services/recharge'
+import { showNotice } from '@/services/notice-service'
 
 import { EnhancedCard } from './enhanced-card'
 
@@ -46,7 +48,19 @@ const formatExpiry = (value?: string) => {
 
 export const LoginStatusCard = () => {
   const { t } = useTranslation()
-  const { userDetail, refreshUserDetail, session } = useAuth()
+  const { userDetail, refreshUserDetail, session, logout } = useAuth()
+
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const handleLogout = useLockFn(async () => {
+    try {
+      await logout()
+    } catch (err) {
+      showNotice.error(err)
+    } finally {
+      setConfirmOpen(false)
+    }
+  })
 
   const cardTitle = (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
@@ -80,8 +94,6 @@ export const LoginStatusCard = () => {
     mutationFn: refreshUserDetail,
   })
 
-  const recharge = useLockFn(() => openRecharge())
-
   const account = maskAccount(userDetail?.username || session?.username)
   const expiry = formatExpiry(
     userDetail?.vip_end_time || userDetail?.expire_in || session?.expire_in,
@@ -89,95 +101,111 @@ export const LoginStatusCard = () => {
   const vipType = userDetail?.vip_type || session?.vip_type
 
   return (
-    <EnhancedCard
-      title={cardTitle}
-      icon={<PersonOutlineRounded />}
-      iconColor="success"
-      action={
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton
-            loading={isRefreshingUserDetail}
-            onClick={() => refreshUserDetailMutation()}
-            title={t('home.components.loginStatus.actions.refreshDetail')}
-            disabled={isRefreshingUserDetail}
-          >
-            {isRefreshingUserDetail ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : (
-              <RefreshRounded color="inherit" />
-            )}
-          </IconButton>
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<AccountBalanceWalletOutlined />}
-            onClick={recharge}
-            sx={{ borderRadius: 1.5 }}
-          >
-            {t('home.components.loginStatus.actions.recharge')}
-          </Button>
-        </Box>
-      }
-    >
-      <Stack spacing={1.5}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ flexShrink: 0 }}
-          >
-            {t('home.components.loginStatus.labels.account')}:
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 'medium',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-            title={account}
-          >
-            {account}
-          </Typography>
-          <Chip
-            size="small"
-            label={
-              vipType
-                ? vipType.toUpperCase()
-                : t('home.components.loginStatus.labels.normalUser')
-            }
-            color={
-              vipType
-                ? (VIP_COLOR_MAP[vipType.toLowerCase()] ?? 'default')
-                : 'default'
-            }
-            variant={vipType ? 'filled' : 'outlined'}
-            sx={{ height: 20, flexShrink: 0 }}
-          />
+    <>
+      <EnhancedCard
+        title={cardTitle}
+        icon={<PersonOutlineRounded />}
+        iconColor="success"
+        action={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton
+              loading={isRefreshingUserDetail}
+              onClick={() => refreshUserDetailMutation()}
+              title={t('home.components.loginStatus.actions.refreshDetail')}
+              disabled={isRefreshingUserDetail}
+            >
+              {isRefreshingUserDetail ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <RefreshRounded color="inherit" />
+              )}
+            </IconButton>
+            <Button
+              variant="outlined"
+              size="small"
+              color="error"
+              startIcon={<LogoutRounded />}
+              onClick={() => setConfirmOpen(true)}
+              sx={{ borderRadius: 1.5 }}
+            >
+              {t('home.components.loginStatus.actions.logout')}
+            </Button>
+          </Box>
+        }
+      >
+        <Stack spacing={1.5}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ flexShrink: 0 }}
+            >
+              {t('home.components.loginStatus.labels.account')}:
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 'medium',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={account}
+            >
+              {account}
+            </Typography>
+            <Chip
+              size="small"
+              label={
+                vipType
+                  ? vipType.toUpperCase()
+                  : t('home.components.loginStatus.labels.normalUser')
+              }
+              color={
+                vipType
+                  ? (VIP_COLOR_MAP[vipType.toLowerCase()] ?? 'default')
+                  : 'default'
+              }
+              variant={vipType ? 'filled' : 'outlined'}
+              sx={{ height: 20, flexShrink: 0 }}
+            />
+          </Stack>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ flexShrink: 0 }}
+            >
+              {t('home.components.loginStatus.labels.expireTime')}:
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 'medium',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={expiry}
+            >
+              {expiry}
+            </Typography>
+          </Stack>
         </Stack>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ flexShrink: 0 }}
-          >
-            {t('home.components.loginStatus.labels.expireTime')}:
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              fontWeight: 'medium',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-            title={expiry}
-          >
-            {expiry}
-          </Typography>
-        </Stack>
-      </Stack>
-    </EnhancedCard>
+      </EnhancedCard>
+      <BaseDialog
+        open={confirmOpen}
+        title={t('home.components.loginStatus.logoutConfirm.title')}
+        okBtn={t('home.components.loginStatus.actions.logout')}
+        cancelBtn={t('shared.actions.cancel')}
+        onClose={() => setConfirmOpen(false)}
+        onCancel={() => setConfirmOpen(false)}
+        onOk={handleLogout}
+      >
+        <Typography variant="body2" color="text.secondary">
+          {t('home.components.loginStatus.logoutConfirm.message')}
+        </Typography>
+      </BaseDialog>
+    </>
   )
 }
