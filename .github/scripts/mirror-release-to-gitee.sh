@@ -153,21 +153,33 @@ FAILED_DIR="$(mktemp -d)"
 export API OWNER REPO TOKEN FAILED_DIR
 export GITEE_RELEASE_ID="${rid}"
 
-# 单文件上传（供 xargs 并发调用）；失败时在 FAILED_DIR 留个标记
+# 单文件上传（供 xargs 并发调用）；失败时在 FAILED_DIR 留个标记。
+# 用 curl -w 输出上传速率：传完打印「大小 @ 速率 / 耗时」。
 upload_one() {
   local f="$1" fn; fn="$(basename "${f}")"
   local mb=$(( $(stat -c%s "${f}" 2>/dev/null || stat -f%z "${f}") / 1048576 ))
   echo "  ⬆ 开始（${mb}MB）：${fn}"
-  local up
-  if up="$(curl -fsS --connect-timeout 30 --max-time 1800 --retry 2 --retry-delay 5 \
+  local resp metrics rc
+  resp="$(mktemp)"
+  # body 写到文件，stdout 只留 -w 的指标：上传字节 速率(B/s) 总耗时(s) HTTP码
+  metrics="$(curl -sS --connect-timeout 30 --max-time 1800 --retry 2 --retry-delay 5 \
+        -o "${resp}" \
+        -w '%{size_upload} %{speed_upload} %{time_total} %{http_code}' \
         -X POST "${API}/repos/${OWNER}/${REPO}/releases/${GITEE_RELEASE_ID}/attach_files" \
-        --form-string "access_token=${TOKEN}" -F "file=@${f}")" \
-     && echo "${up}" | jq -e '.browser_download_url // .name // .id' >/dev/null 2>&1; then
-    echo "  ✓ ${fn}"
+        --form-string "access_token=${TOKEN}" -F "file=@${f}")"
+  rc=$?
+  local up_bytes spd_bps secs code
+  read -r up_bytes spd_bps secs code <<< "${metrics}"
+  # 人类可读速率（MB/s 或 KB/s）
+  local rate
+  rate="$(awk -v s="${spd_bps:-0}" 'BEGIN{ if (s>=1048576) printf "%.1fMB/s", s/1048576; else printf "%.0fKB/s", s/1024 }')"
+  if [ "${rc}" -eq 0 ] && jq -e '.browser_download_url // .name // .id' < "${resp}" >/dev/null 2>&1; then
+    echo "  ✓ ${fn}  ${mb}MB @ ${rate}  用时${secs%.*}s"
   else
-    echo "  ⚠️ 失败：${fn}（${up:-无响应/超时}）"
+    echo "  ⚠️ 失败：${fn}（HTTP ${code:-?}，${rate}，用时${secs%.*}s）"
     : > "${FAILED_DIR}/${fn}"
   fi
+  rm -f "${resp}"
 }
 export -f upload_one
 
