@@ -147,8 +147,8 @@ for f in assets/*; do
   echo "${f}" >> "${UPLOAD_LIST}"
 done
 
-# 阶段 2：并发上传（跨境单连接被限速，并发可成倍提速）。PARALLEL 可调，默认 6。
-PARALLEL="${PARALLEL:-6}"
+# 阶段 2：并发上传（跨境单连接被限速，并发可成倍提速）。PARALLEL 可调，默认 8。
+PARALLEL="${PARALLEL:-8}"
 FAILED_DIR="$(mktemp -d)"
 export API OWNER REPO TOKEN FAILED_DIR
 export GITEE_RELEASE_ID="${rid}"
