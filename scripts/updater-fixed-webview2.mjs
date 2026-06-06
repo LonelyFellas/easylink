@@ -1,10 +1,14 @@
+import { writeFileSync } from 'node:fs'
+
 import { context, getOctokit } from '@actions/github'
 import fetch from 'node-fetch'
 
 import { resolveUpdateLog } from './updatelog.mjs'
 
-// GitHub 下载加速镜像前缀，需与 updater.mjs 保持一致；末尾必须带 /
-const GH_PROXY_PREFIX = 'https://ghfast.top/'
+// 阿里云 OSS 国内直连镜像（北京），需与 updater.mjs 保持一致。
+// CI 的 mirror-to-oss job 会把 fixed-webview2 安装包也上传到 <OSS_BASE>/tags/<tag>/。
+const OSS_BASE = 'https://easylink-desktop.oss-cn-beijing.aliyuncs.com'
+const OSS_TAGS_PREFIX = `${OSS_BASE}/tags`
 
 const UPDATE_TAG_NAME = 'updater'
 const UPDATE_JSON_FILE = 'update-fixed-webview2.json'
@@ -113,17 +117,23 @@ async function resolveUpdater() {
     }
   })
 
-  // 生成一个代理github的更新文件
-  // 使用 https://hub.fastgit.xyz/ 做github资源的加速
+  // 生成走 OSS 国内直连的代理清单：把下载地址改写成 <OSS_BASE>/tags/<tag>/<文件名>
   const updateDataNew = JSON.parse(JSON.stringify(updateData))
 
   Object.entries(updateDataNew.platforms).forEach(([key, value]) => {
     if (value.url) {
-      updateDataNew.platforms[key].url = GH_PROXY_PREFIX + value.url
+      const fileName = value.url.split('/').pop()
+      updateDataNew.platforms[key].url =
+        `${OSS_TAGS_PREFIX}/${tag.name}/${fileName}`
     } else {
       console.log(`[Error]: updateDataNew.platforms.${key} is null`)
     }
   })
+
+  // 把 OSS 清单写到本地，供 release-update-for-fixed-webview2 job 用 ossutil
+  // 上传到 <OSS_BASE>/tags/update-fixed-webview2-proxy.json（固定路径，endpoints 第一个指向它）
+  writeFileSync(UPDATE_JSON_PROXY, JSON.stringify(updateDataNew, null, 2))
+  console.log(`Wrote ${UPDATE_JSON_PROXY} to local disk for OSS upload`)
 
   // update the update.json
   const { data: updateRelease } = await github.rest.repos.getReleaseByTag({

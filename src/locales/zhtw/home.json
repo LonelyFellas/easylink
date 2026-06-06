@@ -39,7 +39,12 @@
       },
       "actions": {
         "recharge": "Recharge",
-        "refreshDetail": "Refresh user details"
+        "refreshDetail": "Refresh user details",
+        "logout": "退出登入"
+      },
+      "logoutConfirm": {
+        "title": "退出登入",
+        "message": "確定要退出目前帳號嗎？退出後將關閉系統代理。"
       }
     },
     "membership": {

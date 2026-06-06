@@ -140,6 +140,7 @@ export interface TranslationResources {
         }
         loginStatus: {
           actions: {
+            logout: string
             recharge: string
             refreshDetail: string
           }
@@ -147,6 +148,10 @@ export interface TranslationResources {
             account: string
             expireTime: string
             normalUser: string
+          }
+          logoutConfirm: {
+            message: string
+            title: string
           }
           statuses: {
             loggedIn: string
