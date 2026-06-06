@@ -25,8 +25,9 @@ concurrency:
 env:
   # GitHub 上 release 实际所在的公开仓库（构建产物发布到这里）
   SOURCE_REPO: ${{ vars.RELEASE_SOURCE_REPO || 'LonelyFellas/easylink' }}
-  GITEE_OWNER: ${{ vars.GITEE_OWNER }}
-  GITEE_REPO: ${{ vars.GITEE_REPO }}
+  # owner/repo/branch 已知，写死为默认值；如需改用别的 Gitee 仓库再配同名 Variables 覆盖。
+  GITEE_OWNER: ${{ vars.GITEE_OWNER || 'yu-shengming' }}
+  GITEE_REPO: ${{ vars.GITEE_REPO || 'elinkpc' }}
   GITEE_BRANCH: ${{ vars.GITEE_BRANCH || 'master' }}
   GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
   GH_TOKEN: ${{ github.token }}
@@ -70,9 +71,9 @@ jobs:
       - name: 校验 Gitee 配置
         if: steps.resolve.outputs.skip != '1'
         run: |
-          : "${GITEE_OWNER:?请在仓库 Settings → Variables 配置 GITEE_OWNER}"
-          : "${GITEE_REPO:?请在仓库 Settings → Variables 配置 GITEE_REPO}"
-          : "${GITEE_TOKEN:?请在仓库 Settings → Secrets 配置 GITEE_TOKEN}"
+          # owner/repo/branch 在 env 已有默认值，只需确认 token 这个 Secret 已配置
+          : "${GITEE_TOKEN:?请在仓库 Settings → Secrets and variables → Actions → Secrets 配置 GITEE_TOKEN}"
+          echo "Gitee 目标：${GITEE_OWNER}/${GITEE_REPO}（分支 ${GITEE_BRANCH}）"
 
       - name: 同步到 Gitee
         if: steps.resolve.outputs.skip != '1'
