@@ -124,16 +124,16 @@ rid="$(gitee_ensure_release "${TAG}" "${NAME}" "${BODY}" "${PRE}")"
 attached="$(gitee_list_assets "${rid}" | cut -f1)"
 
 fail=0
+# 阶段 1：过滤出真正要上传的文件（排除/超限/已存在的先剔掉）
+UPLOAD_LIST="$(mktemp)"
 for f in assets/*; do
   [ -f "${f}" ] || continue
   fn="$(basename "${f}")"
-  # 命中排除模式（fixed_webview2 / 冷门架构）的直接跳过，连上传都不试
   if is_excluded "${fn}"; then
     echo "  ⏭ 跳过（已排除）：${fn}"
     echo "${fn}" >> "${SKIPPED_FILE}"
     continue
   fi
-  # 超过 Gitee 单文件上限的直接跳过（记下来，供清单判断）
   mb=$(( $(file_size "${f}") / 1048576 ))
   if [ "${mb}" -gt "${MAX_ASSET_MB}" ]; then
     echo "  ⏭ 跳过（${mb}MB > ${MAX_ASSET_MB}MB 上限）：${fn}"
@@ -144,16 +144,44 @@ for f in assets/*; do
     echo "  跳过（已存在）：${fn}"
     continue
   fi
-  echo "  上传（${mb}MB）：${fn}"
-  if up="$(gitee_upload_asset "${rid}" "${f}")" \
-     && echo "${up}" | jq -e '.browser_download_url // .name // .id' >/dev/null 2>&1; then
-    echo "    ✓"
-  else
-    echo "    ⚠️ 失败：${up:-(无响应/超时)}" >&2
-    echo "${fn}" >> "${SKIPPED_FILE}"
-    fail=1
-  fi
+  echo "${f}" >> "${UPLOAD_LIST}"
 done
+
+# 阶段 2：并发上传（跨境单连接被限速，并发可成倍提速）。PARALLEL 可调，默认 6。
+PARALLEL="${PARALLEL:-6}"
+FAILED_DIR="$(mktemp -d)"
+export API OWNER REPO TOKEN FAILED_DIR
+export GITEE_RELEASE_ID="${rid}"
+
+# 单文件上传（供 xargs 并发调用）；失败时在 FAILED_DIR 留个标记
+upload_one() {
+  local f="$1" fn; fn="$(basename "${f}")"
+  local mb=$(( $(stat -c%s "${f}" 2>/dev/null || stat -f%z "${f}") / 1048576 ))
+  echo "  ⬆ 开始（${mb}MB）：${fn}"
+  local up
+  if up="$(curl -fsS --connect-timeout 30 --max-time 1800 --retry 2 --retry-delay 5 \
+        -X POST "${API}/repos/${OWNER}/${REPO}/releases/${GITEE_RELEASE_ID}/attach_files" \
+        --form-string "access_token=${TOKEN}" -F "file=@${f}")" \
+     && echo "${up}" | jq -e '.browser_download_url // .name // .id' >/dev/null 2>&1; then
+    echo "  ✓ ${fn}"
+  else
+    echo "  ⚠️ 失败：${fn}（${up:-无响应/超时}）"
+    : > "${FAILED_DIR}/${fn}"
+  fi
+}
+export -f upload_one
+
+if [ -s "${UPLOAD_LIST}" ]; then
+  echo "  并发 ${PARALLEL} 个上传 ..."
+  xargs -P "${PARALLEL}" -I {} bash -c 'upload_one "$@"' _ {} < "${UPLOAD_LIST}"
+fi
+
+# 收集失败：计入 fail，并记入跳过名单（供清单判断）
+if [ -n "$(ls -A "${FAILED_DIR}" 2>/dev/null)" ]; then
+  for ff in "${FAILED_DIR}"/*; do basename "${ff}" >> "${SKIPPED_FILE}"; done
+  fail=1
+fi
+rm -rf "${FAILED_DIR}" "${UPLOAD_LIST}"
 echo "==> 安装包镜像完成：https://gitee.com/${OWNER}/${REPO}/releases/tag/${TAG}"
 
 # ---------- 2. 同步自动更新清单到 Gitee ----------
