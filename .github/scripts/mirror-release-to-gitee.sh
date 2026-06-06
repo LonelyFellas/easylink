@@ -1,24 +1,33 @@
 #!/usr/bin/env bash
 #
-# 把指定 GitHub Release tag 的全部产物镜像到 Gitee Releases（国内全速下载），
-# 并把自动更新清单（update.json / update-fixed-webview2.json）也同步到 Gitee 的
+# 把指定 GitHub Release tag 的产物镜像到 Gitee Releases（国内全速下载），
+# 并把自动更新清单（update.json / update-fixed-webview2.json）同步到 Gitee 的
 # 固定 "updater" release，清单里的安装包地址改写成 Gitee 地址，供 App 自动更新走 Gitee。
+#
+# 子命令（供 GitHub Actions 多 runner 并行 matrix 调用）：
+#   prepare              在 Gitee 确保版本 release 存在，输出其 id（写 GITHUB_OUTPUT 的 rid）
+#   upload <rid> [glob…] 下载匹配 glob 的产物并上传到该 release；无 glob 则上传全部
+#   manifest <rid>       同步自动更新清单（按 Gitee 上实际已传的附件判断是否齐全）
+#   all <tag>            单机全量：prepare + upload(全部) + manifest（本地手动用，兼容旧用法）
 #
 # 依赖：gh、curl、jq（GitHub Actions ubuntu runner 已内置；本地需自行安装并 gh auth login）
 #
 # 环境变量：
+#   TAG            要镜像的 release tag（prepare/upload/manifest 必填；all 用第二参数）
 #   SOURCE_REPO    GitHub 源仓库，默认 LonelyFellas/easylink
-#   GITEE_OWNER    Gitee 空间地址（用户名/组织）   [必填]
-#   GITEE_REPO     Gitee 仓库 path                 [必填]
-#   GITEE_BRANCH   目标分支，默认 master
-#   GITEE_TOKEN    Gitee 私人令牌（需 projects 权限）[必填]
+#   GITEE_OWNER/GITEE_REPO/GITEE_BRANCH/GITEE_TOKEN   Gitee 目标与令牌
+#   MAX_ASSET_MB   单文件上限（MB），超过跳过，默认 100
+#   EXCLUDE_GLOBS  不镜像的文件名 glob（空格分隔）
+#   PARALLEL       单个 job 内并发上传数，默认 4（matrix 靠 runner 数横向扩展，单 job 别堆太高以免撞 Gitee 限流）
 #
-# 用法：
-#   bash mirror-release-to-gitee.sh v1.1.5
+# 用法示例：
+#   TAG=v1.1.9 bash mirror-release-to-gitee.sh prepare
+#   TAG=v1.1.9 bash mirror-release-to-gitee.sh upload 12345 '*_amd64.deb*' '*x86_64.rpm*'
+#   TAG=v1.1.9 bash mirror-release-to-gitee.sh manifest 12345
+#   bash mirror-release-to-gitee.sh all v1.1.9
 #
 set -euo pipefail
 
-TAG="${1:?用法: mirror-release-to-gitee.sh <tag>}"
 SOURCE_REPO="${SOURCE_REPO:-LonelyFellas/easylink}"
 API="https://gitee.com/api/v5"
 OWNER="${GITEE_OWNER:?需要环境变量 GITEE_OWNER}"
@@ -26,15 +35,23 @@ REPO="${GITEE_REPO:?需要环境变量 GITEE_REPO}"
 BRANCH="${GITEE_BRANCH:-master}"
 TOKEN="${GITEE_TOKEN:?需要环境变量 GITEE_TOKEN}"
 
-# Gitee 免费版单文件附件大小上限（MB）。超过的文件跳过不传，避免上传卡死/被拒；
-# 这些大文件继续走 GitHub/gh-proxy 兜底。
+# Gitee 免费版单文件附件大小上限（MB）。超过的文件跳过不传，继续走 GitHub/gh-proxy 兜底。
 MAX_ASSET_MB="${MAX_ASSET_MB:-100}"
 
-# 不镜像到 Gitee 的文件名模式（空格分隔的 glob），匹配到的直接跳过、连试都不试：
+# 不镜像到 Gitee 的文件名模式（空格分隔的 glob）：
 #   - *fixed_webview2*  fixed-webview2 安装包（200MB+，超 Gitee 上限）
-#   - *armhf* / *armhfp* 冷门的 32 位 ARM 架构（受众极少，不占 Gitee 空间）
-# 被排除的安装包继续保留在 GitHub，用户仍可从 GitHub 下载。
+#   - *armhf* / *armhfp* 冷门的 32 位 ARM 架构
 EXCLUDE_GLOBS="${EXCLUDE_GLOBS:-*fixed_webview2* *armhf* *armhfp*}"
+
+# 单 job 内并发上传数。matrix 已按平台×架构把文件拆到多个 runner 并行，
+# 每个 job 只有 1~3 个文件，这里不必（也不应）开太高，避免多 job 共用一个 token 撞 Gitee 限流。
+PARALLEL="${PARALLEL:-4}"
+
+UPDATER_TAG="updater"
+GH_DL_PREFIX="https://github.com/${SOURCE_REPO}/releases/download/"
+GITEE_DL_PREFIX="https://gitee.com/${OWNER}/${REPO}/releases/download/"
+
+# ---------- 通用小工具 ----------
 
 # 文件名是否命中排除模式
 is_excluded() {
@@ -44,16 +61,11 @@ is_excluded() {
   done
   return 1
 }
-# 被跳过的文件名（每行一个），用于后续判断清单是否可发布
-SKIPPED_FILE="$(mktemp)"
 
-# 自动更新清单所在的固定 release tag（与 GitHub 端一致）
-UPDATER_TAG="updater"
-GH_DL_PREFIX="https://github.com/${SOURCE_REPO}/releases/download/"
-GITEE_DL_PREFIX="https://gitee.com/${OWNER}/${REPO}/releases/download/"
-
-echo "==> 源:   github.com/${SOURCE_REPO} @ ${TAG}"
-echo "==> 目标: gitee.com/${OWNER}/${REPO}（分支 ${BRANCH}）"
+# 文件字节数（兼容 Linux/macOS）
+file_size() {
+  stat -c%s "$1" 2>/dev/null || stat -f%z "$1"
+}
 
 # ---------- Gitee API 小工具 ----------
 
@@ -94,64 +106,11 @@ gitee_delete_asset() {
 }
 
 # 上传附件。参数：release_id 文件路径
-# 加超时+重试：连接 30s、整体最多 30min、失败重试 2 次，避免跨境上传卡死时无限挂起。
 gitee_upload_asset() {
   curl -fsS --connect-timeout 30 --max-time 1800 --retry 2 --retry-delay 5 \
     -X POST "${API}/repos/${OWNER}/${REPO}/releases/$1/attach_files" \
     --form-string "access_token=${TOKEN}" -F "file=@$2"
 }
-
-# 文件字节数（兼容 Linux/macOS）
-file_size() {
-  stat -c%s "$1" 2>/dev/null || stat -f%z "$1"
-}
-
-# ---------- 1. 镜像版本安装包 ----------
-
-rm -rf assets && mkdir -p assets
-gh release download "${TAG}" -R "${SOURCE_REPO}" -D assets --clobber
-echo "下载完成："
-ls -lh assets
-
-NAME="$(gh release view "${TAG}" -R "${SOURCE_REPO}" --json name -q '.name' || true)"
-BODY="$(gh release view "${TAG}" -R "${SOURCE_REPO}" --json body -q '.body' || true)"
-PRE="$(gh release view "${TAG}" -R "${SOURCE_REPO}" --json isPrerelease -q '.isPrerelease' || echo false)"
-if [ -z "${NAME}" ] || [ "${NAME}" = "null" ]; then NAME="${TAG}"; fi
-if [ -z "${BODY}" ] || [ "${BODY}" = "null" ]; then BODY="Mirror of ${TAG} from github.com/${SOURCE_REPO}"; fi
-if [ -z "${PRE}" ] || [ "${PRE}" = "null" ]; then PRE="false"; fi
-
-rid="$(gitee_ensure_release "${TAG}" "${NAME}" "${BODY}" "${PRE}")"
-attached="$(gitee_list_assets "${rid}" | cut -f1)"
-
-fail=0
-# 阶段 1：过滤出真正要上传的文件（排除/超限/已存在的先剔掉）
-UPLOAD_LIST="$(mktemp)"
-for f in assets/*; do
-  [ -f "${f}" ] || continue
-  fn="$(basename "${f}")"
-  if is_excluded "${fn}"; then
-    echo "  ⏭ 跳过（已排除）：${fn}"
-    echo "${fn}" >> "${SKIPPED_FILE}"
-    continue
-  fi
-  mb=$(( $(file_size "${f}") / 1048576 ))
-  if [ "${mb}" -gt "${MAX_ASSET_MB}" ]; then
-    echo "  ⏭ 跳过（${mb}MB > ${MAX_ASSET_MB}MB 上限）：${fn}"
-    echo "${fn}" >> "${SKIPPED_FILE}"
-    continue
-  fi
-  if printf '%s\n' "${attached}" | grep -Fxq "${fn}"; then
-    echo "  跳过（已存在）：${fn}"
-    continue
-  fi
-  echo "${f}" >> "${UPLOAD_LIST}"
-done
-
-# 阶段 2：并发上传（跨境单连接被限速，并发可成倍提速）。PARALLEL 可调，默认 8。
-PARALLEL="${PARALLEL:-8}"
-FAILED_DIR="$(mktemp -d)"
-export API OWNER REPO TOKEN FAILED_DIR
-export GITEE_RELEASE_ID="${rid}"
 
 # 单文件上传（供 xargs 并发调用）；失败时在 FAILED_DIR 留个标记。
 # 用 curl -w 输出上传速率：传完打印「大小 @ 速率 / 耗时」。
@@ -161,7 +120,6 @@ upload_one() {
   echo "  ⬆ 开始（${mb}MB）：${fn}"
   local resp metrics rc
   resp="$(mktemp)"
-  # body 写到文件，stdout 只留 -w 的指标：上传字节 速率(B/s) 总耗时(s) HTTP码
   metrics="$(curl -sS --connect-timeout 30 --max-time 1800 --retry 2 --retry-delay 5 \
         -o "${resp}" \
         -w '%{size_upload} %{speed_upload} %{time_total} %{http_code}' \
@@ -170,7 +128,6 @@ upload_one() {
   rc=$?
   local up_bytes spd_bps secs code
   read -r up_bytes spd_bps secs code <<< "${metrics}"
-  # 人类可读速率（MB/s 或 KB/s）
   local rate
   rate="$(awk -v s="${spd_bps:-0}" 'BEGIN{ if (s>=1048576) printf "%.1fMB/s", s/1048576; else printf "%.0fKB/s", s/1024 }')"
   if [ "${rc}" -eq 0 ] && jq -e '.browser_download_url // .name // .id' < "${resp}" >/dev/null 2>&1; then
@@ -183,91 +140,182 @@ upload_one() {
 }
 export -f upload_one
 
-# 大文件优先：按字节降序排列待传列表，让最大的文件最先进并发池，
-# 避免最后只剩一个大文件单连接慢传拖尾（缩短整体 makespan）。
-if [ -s "${UPLOAD_LIST}" ]; then
-  SORTED="$(mktemp)"
+# ---------- 子命令：prepare ----------
+# 在 Gitee 确保版本 release 存在，输出其 id（同时写入 GITHUB_OUTPUT 的 rid）。
+cmd_prepare() {
+  : "${TAG:?需要环境变量 TAG}"
+  echo "==> prepare：在 gitee.com/${OWNER}/${REPO} 确保 release ${TAG} 存在" >&2
+  local name body pre rid
+  name="$(gh release view "${TAG}" -R "${SOURCE_REPO}" --json name -q '.name' 2>/dev/null || true)"
+  body="$(gh release view "${TAG}" -R "${SOURCE_REPO}" --json body -q '.body' 2>/dev/null || true)"
+  pre="$(gh release view "${TAG}" -R "${SOURCE_REPO}" --json isPrerelease -q '.isPrerelease' 2>/dev/null || echo false)"
+  if [ -z "${name}" ] || [ "${name}" = "null" ]; then name="${TAG}"; fi
+  if [ -z "${body}" ] || [ "${body}" = "null" ]; then body="Mirror of ${TAG} from github.com/${SOURCE_REPO}"; fi
+  if [ -z "${pre}" ] || [ "${pre}" = "null" ]; then pre="false"; fi
+
+  rid="$(gitee_ensure_release "${TAG}" "${name}" "${body}" "${pre}")"
+  echo "==> Gitee release id = ${rid}" >&2
+  [ -n "${GITHUB_OUTPUT:-}" ] && echo "rid=${rid}" >> "${GITHUB_OUTPUT}"
+  echo "${rid}"
+}
+
+# ---------- 子命令：upload ----------
+# 用法：cmd_upload <rid> [glob ...]
+# 下载匹配 glob 的产物（无 glob = 全部），过滤排除/超限/已存在后并发上传到该 release。
+cmd_upload() {
+  : "${TAG:?需要环境变量 TAG}"
+  local rid="$1"; shift || true
+  [ -n "${rid}" ] || { echo "❌ upload 需要 release id" >&2; return 1; }
+  local globs=("$@")
+
+  echo "==> upload：tag=${TAG} rid=${rid} globs=[${globs[*]:-全部}]"
+  rm -rf assets && mkdir -p assets
+  if [ "${#globs[@]}" -eq 0 ]; then
+    gh release download "${TAG}" -R "${SOURCE_REPO}" -D assets --clobber
+  else
+    local g
+    for g in "${globs[@]}"; do
+      gh release download "${TAG}" -R "${SOURCE_REPO}" -D assets --clobber --pattern "${g}" || true
+    done
+  fi
+  if [ -z "$(ls -A assets 2>/dev/null)" ]; then
+    echo "  本分片无匹配产物，跳过。"
+    return 0
+  fi
+  echo "下载到的产物："; ls -lh assets
+
+  # 该 release 上已有的附件名（用于跳过重复上传）
+  local attached
+  attached="$(gitee_list_assets "${rid}" | cut -f1)"
+
+  # 过滤出真正要传的文件
+  local UPLOAD_LIST f fn mb
+  UPLOAD_LIST="$(mktemp)"
+  for f in assets/*; do
+    [ -f "${f}" ] || continue
+    fn="$(basename "${f}")"
+    if is_excluded "${fn}"; then echo "  ⏭ 跳过（已排除）：${fn}"; continue; fi
+    mb=$(( $(file_size "${f}") / 1048576 ))
+    if [ "${mb}" -gt "${MAX_ASSET_MB}" ]; then
+      echo "  ⏭ 跳过（${mb}MB > ${MAX_ASSET_MB}MB 上限）：${fn}"; continue
+    fi
+    if printf '%s\n' "${attached}" | grep -Fxq "${fn}"; then
+      echo "  跳过（已存在）：${fn}"; continue
+    fi
+    echo "${f}" >> "${UPLOAD_LIST}"
+  done
+
+  if [ ! -s "${UPLOAD_LIST}" ]; then
+    echo "  本分片无需上传（都已存在或被过滤）。"; rm -f "${UPLOAD_LIST}"; return 0
+  fi
+
+  # 大文件优先：按字节降序，最大的先进并发池，减少长尾
+  local SORTED; SORTED="$(mktemp)"
   while IFS= read -r f; do
     [ -f "${f}" ] || continue
     printf '%s\t%s\n' "$(file_size "${f}")" "${f}"
   done < "${UPLOAD_LIST}" | sort -rn | cut -f2- > "${SORTED}"
   mv "${SORTED}" "${UPLOAD_LIST}"
-fi
 
-if [ -s "${UPLOAD_LIST}" ]; then
+  FAILED_DIR="$(mktemp -d)"
+  export API OWNER REPO TOKEN FAILED_DIR
+  export GITEE_RELEASE_ID="${rid}"
+
   echo "  并发 ${PARALLEL} 个上传（大文件优先）..."
   xargs -P "${PARALLEL}" -I {} bash -c 'upload_one "$@"' _ {} < "${UPLOAD_LIST}"
-fi
 
-# 收集失败：计入 fail，并记入跳过名单（供清单判断）
-if [ -n "$(ls -A "${FAILED_DIR}" 2>/dev/null)" ]; then
-  for ff in "${FAILED_DIR}"/*; do basename "${ff}" >> "${SKIPPED_FILE}"; done
-  fail=1
-fi
-rm -rf "${FAILED_DIR}" "${UPLOAD_LIST}"
-echo "==> 安装包镜像完成：https://gitee.com/${OWNER}/${REPO}/releases/tag/${TAG}"
+  local failed=0
+  if [ -n "$(ls -A "${FAILED_DIR}" 2>/dev/null)" ]; then
+    echo "  ⚠️ 本分片有文件上传失败：" ; ls "${FAILED_DIR}"
+    failed=1
+  fi
+  rm -rf "${FAILED_DIR}" "${UPLOAD_LIST}"
+  echo "==> 分片上传完成：https://gitee.com/${OWNER}/${REPO}/releases/tag/${TAG}"
+  return "${failed}"
+}
 
-# ---------- 2. 同步自动更新清单到 Gitee ----------
-# 取 GitHub 的 update.json / update-fixed-webview2.json，把里面的安装包地址
-# 从 github.com/<源仓库>/releases/download/ 改写成 gitee.com/<目标仓库>/releases/download/，
-# 再传到 Gitee 的固定 "updater" release。仅当本次镜像的 tag 正好是清单所指版本时才刷新，
-# 确保 Gitee 上对应版本的安装包已就位，避免 App 拿到指向不存在文件的清单。
+# ---------- 子命令：manifest ----------
+# 用法：cmd_manifest <version_rid>
+# 取 GitHub updater 清单，地址改写 github → gitee，传到 Gitee 的固定 "updater" release。
+# 仅当清单版本 == 本次 TAG，且清单引用的安装包都已实际出现在 Gitee 版本 release 时才发布该清单，
+# 避免 App 拿到指向不存在文件的地址。引用是否齐全用「Gitee 实际附件列表」判断（适配 matrix 并行）。
+cmd_manifest() {
+  : "${TAG:?需要环境变量 TAG}"
+  local rid="$1"
+  [ -n "${rid}" ] || { echo "❌ manifest 需要版本 release id" >&2; return 1; }
 
-rm -rf updater-src updater-out && mkdir -p updater-src updater-out
-gh release download "${UPDATER_TAG}" -R "${SOURCE_REPO}" -D updater-src --clobber \
-  --pattern 'update.json' --pattern 'update-fixed-webview2.json' || true
+  rm -rf updater-src updater-out && mkdir -p updater-src updater-out
+  gh release download "${UPDATER_TAG}" -R "${SOURCE_REPO}" -D updater-src --clobber \
+    --pattern 'update.json' --pattern 'update-fixed-webview2.json' || true
 
-manifest_ver=""
-if [ -f updater-src/update.json ]; then
-  manifest_ver="$(jq -r '.name // empty' updater-src/update.json || true)"
-fi
+  local manifest_ver=""
+  [ -f updater-src/update.json ] && manifest_ver="$(jq -r '.name // empty' updater-src/update.json || true)"
 
-if [ -z "${manifest_ver}" ]; then
-  echo "==> 未找到 GitHub updater/update.json，跳过更新清单同步。"
-elif [ "${manifest_ver}" != "${TAG}" ]; then
-  echo "==> 更新清单指向 ${manifest_ver}，与本次镜像的 ${TAG} 不一致，跳过清单同步（避免指向未镜像的版本）。"
-else
+  if [ -z "${manifest_ver}" ]; then
+    echo "==> 未找到 GitHub updater/update.json，跳过更新清单同步。"; return 0
+  fi
+  if [ "${manifest_ver}" != "${TAG}" ]; then
+    echo "==> 更新清单指向 ${manifest_ver}，与本次镜像的 ${TAG} 不一致，跳过清单同步。"; return 0
+  fi
+
   echo "==> 同步更新清单（版本 ${manifest_ver}）到 Gitee ${UPDATER_TAG} release ..."
-  urid="$(gitee_ensure_release "${UPDATER_TAG}" "Auto-update Channel" \
+  local urid; urid="$(gitee_ensure_release "${UPDATER_TAG}" "Auto-update Channel" \
     "App 自动更新清单（安装包地址指向 Gitee 国内镜像）。" "false")"
 
-  # 现有附件名→id，用于覆盖前删除
-  upd_assets="$(gitee_list_assets "${urid}")"
+  # Gitee 版本 release 上实际已传的附件名（判断清单引用是否齐全的依据）
+  local present; present="$(gitee_list_assets "${rid}" | cut -f1)"
+  # updater release 现有清单名→id（覆盖前删除）
+  local upd_assets; upd_assets="$(gitee_list_assets "${urid}")"
 
+  local fail=0 mf refs missing rf old_id up
   for mf in update.json update-fixed-webview2.json; do
     [ -f "updater-src/${mf}" ] || { echo "  （源无 ${mf}，跳过）"; continue; }
 
-    # 若该清单引用的某个安装包被跳过（超限/失败）未能上 Gitee，则不发布此清单，
-    # 否则 App 会拿到指向 Gitee 上不存在文件的地址。这类清单交给 GitHub/gh-proxy 端点兜底。
     refs="$(jq -r '.platforms[]?.url // empty' "updater-src/${mf}" | sed 's#.*/##' | sort -u)"
     missing=""
     while IFS= read -r rf; do
       [ -n "${rf}" ] || continue
-      if grep -Fxq "${rf}" "${SKIPPED_FILE}" 2>/dev/null; then missing="${missing} ${rf}"; fi
+      printf '%s\n' "${present}" | grep -Fxq "${rf}" || missing="${missing} ${rf}"
     done <<< "${refs}"
     if [ -n "${missing}" ]; then
-      echo "  ⏭ 跳过清单 ${mf}：以下安装包未能上 Gitee（走 GitHub 兜底）：${missing}"
+      echo "  ⏭ 跳过清单 ${mf}：以下安装包未在 Gitee（走 GitHub 兜底）：${missing}"
       continue
     fi
 
-    # 改写安装包地址 github → gitee（# 作分隔符，避免 URL 里的 /）
     sed "s#${GH_DL_PREFIX}#${GITEE_DL_PREFIX}#g" "updater-src/${mf}" > "updater-out/${mf}"
-
-    # 删除 Gitee 上的旧同名清单
     old_id="$(printf '%s\n' "${upd_assets}" | awk -F'\t' -v n="${mf}" '$1==n{print $2}')"
-    if [ -n "${old_id}" ]; then gitee_delete_asset "${urid}" "${old_id}"; fi
+    [ -n "${old_id}" ] && gitee_delete_asset "${urid}" "${old_id}"
 
     echo "  上传清单：${mf}"
     up="$(gitee_upload_asset "${urid}" "updater-out/${mf}" || echo '')"
     if echo "${up}" | jq -e '.browser_download_url // .name // .id' >/dev/null 2>&1; then
       echo "    ✓ https://gitee.com/${OWNER}/${REPO}/releases/download/${UPDATER_TAG}/${mf}"
     else
-      echo "    ⚠️ 清单上传失败：${up}" >&2
-      fail=1
+      echo "    ⚠️ 清单上传失败：${up}" >&2; fail=1
     fi
   done
-fi
+  return "${fail}"
+}
 
-rm -f "${SKIPPED_FILE}"
-echo "==> 完成。"
-exit "${fail}"
+# ---------- 子命令：all（本地单机全量，兼容旧用法） ----------
+cmd_all() {
+  export TAG="${1:?用法: mirror-release-to-gitee.sh all <tag>}"
+  local rid; rid="$(cmd_prepare)"
+  cmd_upload "${rid}"
+  cmd_manifest "${rid}"
+}
+
+# ---------- 分派 ----------
+echo "==> 源:   github.com/${SOURCE_REPO}"
+echo "==> 目标: gitee.com/${OWNER}/${REPO}（分支 ${BRANCH}）"
+
+SUB="${1:?用法: mirror-release-to-gitee.sh <prepare|upload|manifest|all> ...}"
+shift || true
+case "${SUB}" in
+  prepare)  cmd_prepare "$@" ;;
+  upload)   cmd_upload "$@" ;;
+  manifest) cmd_manifest "$@" ;;
+  all)      cmd_all "$@" ;;
+  v*.*.*)   cmd_all "${SUB}" ;;   # 兼容旧用法：mirror-release-to-gitee.sh v1.1.9
+  *)        echo "❌ 未知子命令：${SUB}" >&2; exit 1 ;;
+esac

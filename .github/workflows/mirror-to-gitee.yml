@@ -1,9 +1,15 @@
 name: Mirror Release to Gitee
 
-# 把 GitHub Release 的全部产物镜像到 Gitee Releases，方便国内全速下载。
+# 把 GitHub Release 的产物镜像到 Gitee Releases，方便国内全速下载。
 # 触发方式：
 #   1. 自动：本仓库 "Release Build" 工作流（tag 发布）成功后自动同步该 tag。
 #   2. 手动：可指定 tag，留空则取源仓库最新 release。
+#
+# 架构（跨境上传慢的根治）：境外 runner → Gitee 是跨境上传，单 runner 出口带宽是瓶颈。
+# 这里按「平台×架构」把产物拆到多个 runner 并行上传——每个 runner 独立出口，带宽叠加：
+#   prepare（建 Gitee release，输出 rid）
+#     → upload（matrix：6 个平台×架构分片并行上传，各自开 BBR）
+#       → manifest（所有分片后，按 Gitee 实际附件判断并发布自动更新清单）
 on:
   workflow_run:
     workflows: ["Release Build"]
@@ -25,7 +31,6 @@ concurrency:
 env:
   # GitHub 上 release 实际所在的公开仓库（构建产物发布到这里）
   SOURCE_REPO: ${{ vars.RELEASE_SOURCE_REPO || 'LonelyFellas/easylink' }}
-  # owner/repo/branch 已知，写死为默认值；如需改用别的 Gitee 仓库再配同名 Variables 覆盖。
   GITEE_OWNER: ${{ vars.GITEE_OWNER || 'yu-shengming' }}
   GITEE_REPO: ${{ vars.GITEE_REPO || 'elinkpc' }}
   GITEE_BRANCH: ${{ vars.GITEE_BRANCH || 'master' }}
@@ -33,13 +38,17 @@ env:
   GH_TOKEN: ${{ github.token }}
 
 jobs:
-  mirror:
-    name: Mirror to Gitee
+  # ---------- 阶段 1：解析 tag + 在 Gitee 建好 release ----------
+  prepare:
+    name: Prepare Gitee release
     runs-on: ubuntu-latest
-    # 自动触发时，仅当 "Release Build" 成功才同步；手动触发始终运行。
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      skip: ${{ steps.resolve.outputs.skip }}
+      rid: ${{ steps.prep.outputs.rid }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -52,7 +61,6 @@ jobs:
           RUN_TAG: ${{ github.event.workflow_run.head_branch }}
         run: |
           if [ "$EVENT_NAME" = "workflow_run" ]; then
-            # "Release Build" 由 tag push 触发，head_branch 即该 tag
             TAG="$RUN_TAG"
             echo "由 Release Build 自动触发，tag：$TAG"
             case "$TAG" in
@@ -71,12 +79,41 @@ jobs:
       - name: 校验 Gitee 配置
         if: steps.resolve.outputs.skip != '1'
         run: |
-          # owner/repo/branch 在 env 已有默认值，只需确认 token 这个 Secret 已配置
           : "${GITEE_TOKEN:?请在仓库 Settings → Secrets and variables → Actions → Secrets 配置 GITEE_TOKEN}"
           echo "Gitee 目标：${GITEE_OWNER}/${GITEE_REPO}（分支 ${GITEE_BRANCH}）"
 
-      - name: 优化跨境上传网络（BBR + 大 TCP 缓冲）
+      - name: 在 Gitee 建好 release
+        id: prep
         if: steps.resolve.outputs.skip != '1'
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
+        run: bash .github/scripts/mirror-release-to-gitee.sh prepare
+
+  # ---------- 阶段 2：matrix 按平台×架构并行上传 ----------
+  upload:
+    name: Upload ${{ matrix.name }}
+    needs: prepare
+    if: needs.prepare.outputs.skip != '1'
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+    strategy:
+      # 一个分片失败不影响其它分片继续；清单阶段会按 Gitee 实际附件判断。
+      fail-fast: false
+      matrix:
+        include:
+          # latest.json 挂到最小的 win-x64 分片顺带上传
+          - { name: win-x64,     globs: "*_x64-setup.exe* latest.json" }
+          - { name: win-arm64,   globs: "*_arm64-setup.exe*" }
+          - { name: mac-x64,     globs: "*_x64.dmg* *x64.app.tar.gz*" }
+          - { name: mac-arm64,   globs: "*aarch64.dmg* *aarch64.app.tar.gz*" }
+          - { name: linux-x64,   globs: "*amd64.deb* *x86_64.rpm*" }
+          - { name: linux-arm64, globs: "*arm64.deb* *aarch64.rpm*" }
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: 优化跨境上传网络（BBR + 大 TCP 缓冲）
         run: |
           # 跨境上传是高 RTT + 有丢包链路，默认 CUBIC 一丢包就砍窗口、吞吐被锁死。
           # 换 BBR（不靠丢包判拥塞）+ 加大发送缓冲填满管道，单连接吞吐常能翻倍。
@@ -88,6 +125,21 @@ jobs:
           sudo sysctl -w net.ipv4.tcp_wmem='4096 87380 67108864' || true
           echo "当前拥塞控制：$(sysctl -n net.ipv4.tcp_congestion_control)"
 
-      - name: 同步到 Gitee
-        if: steps.resolve.outputs.skip != '1'
-        run: bash .github/scripts/mirror-release-to-gitee.sh "${{ steps.resolve.outputs.tag }}"
+      - name: 上传分片到 Gitee
+        run: bash .github/scripts/mirror-release-to-gitee.sh upload "${{ needs.prepare.outputs.rid }}" ${{ matrix.globs }}
+
+  # ---------- 阶段 3：所有分片后同步自动更新清单 ----------
+  manifest:
+    name: Sync update manifest
+    needs: [prepare, upload]
+    # 即使个别分片失败也运行：清单会按 Gitee 实际已传的附件判断是否齐全。
+    if: ${{ !cancelled() && needs.prepare.outputs.skip != '1' }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: 同步更新清单
+        run: bash .github/scripts/mirror-release-to-gitee.sh manifest "${{ needs.prepare.outputs.rid }}"
