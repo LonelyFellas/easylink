@@ -26,6 +26,27 @@ REPO="${GITEE_REPO:?需要环境变量 GITEE_REPO}"
 BRANCH="${GITEE_BRANCH:-master}"
 TOKEN="${GITEE_TOKEN:?需要环境变量 GITEE_TOKEN}"
 
+# Gitee 免费版单文件附件大小上限（MB）。超过的文件跳过不传，避免上传卡死/被拒；
+# 这些大文件继续走 GitHub/gh-proxy 兜底。
+MAX_ASSET_MB="${MAX_ASSET_MB:-100}"
+
+# 不镜像到 Gitee 的文件名模式（空格分隔的 glob），匹配到的直接跳过、连试都不试：
+#   - *fixed_webview2*  fixed-webview2 安装包（200MB+，超 Gitee 上限）
+#   - *armhf* / *armhfp* 冷门的 32 位 ARM 架构（受众极少，不占 Gitee 空间）
+# 被排除的安装包继续保留在 GitHub，用户仍可从 GitHub 下载。
+EXCLUDE_GLOBS="${EXCLUDE_GLOBS:-*fixed_webview2* *armhf* *armhfp*}"
+
+# 文件名是否命中排除模式
+is_excluded() {
+  local g
+  for g in ${EXCLUDE_GLOBS}; do
+    case "$1" in $g) return 0 ;; esac
+  done
+  return 1
+}
+# 被跳过的文件名（每行一个），用于后续判断清单是否可发布
+SKIPPED_FILE="$(mktemp)"
+
 # 自动更新清单所在的固定 release tag（与 GitHub 端一致）
 UPDATER_TAG="updater"
 GH_DL_PREFIX="https://github.com/${SOURCE_REPO}/releases/download/"
@@ -73,9 +94,16 @@ gitee_delete_asset() {
 }
 
 # 上传附件。参数：release_id 文件路径
+# 加超时+重试：连接 30s、整体最多 30min、失败重试 2 次，避免跨境上传卡死时无限挂起。
 gitee_upload_asset() {
-  curl -fsS -X POST "${API}/repos/${OWNER}/${REPO}/releases/$1/attach_files" \
+  curl -fsS --connect-timeout 30 --max-time 1800 --retry 2 --retry-delay 5 \
+    -X POST "${API}/repos/${OWNER}/${REPO}/releases/$1/attach_files" \
     --form-string "access_token=${TOKEN}" -F "file=@$2"
+}
+
+# 文件字节数（兼容 Linux/macOS）
+file_size() {
+  stat -c%s "$1" 2>/dev/null || stat -f%z "$1"
 }
 
 # ---------- 1. 镜像版本安装包 ----------
@@ -99,16 +127,30 @@ fail=0
 for f in assets/*; do
   [ -f "${f}" ] || continue
   fn="$(basename "${f}")"
+  # 命中排除模式（fixed_webview2 / 冷门架构）的直接跳过，连上传都不试
+  if is_excluded "${fn}"; then
+    echo "  ⏭ 跳过（已排除）：${fn}"
+    echo "${fn}" >> "${SKIPPED_FILE}"
+    continue
+  fi
+  # 超过 Gitee 单文件上限的直接跳过（记下来，供清单判断）
+  mb=$(( $(file_size "${f}") / 1048576 ))
+  if [ "${mb}" -gt "${MAX_ASSET_MB}" ]; then
+    echo "  ⏭ 跳过（${mb}MB > ${MAX_ASSET_MB}MB 上限）：${fn}"
+    echo "${fn}" >> "${SKIPPED_FILE}"
+    continue
+  fi
   if printf '%s\n' "${attached}" | grep -Fxq "${fn}"; then
     echo "  跳过（已存在）：${fn}"
     continue
   fi
-  echo "  上传：${fn}"
-  up="$(gitee_upload_asset "${rid}" "${f}" || echo '')"
-  if echo "${up}" | jq -e '.browser_download_url // .name // .id' >/dev/null 2>&1; then
+  echo "  上传（${mb}MB）：${fn}"
+  if up="$(gitee_upload_asset "${rid}" "${f}")" \
+     && echo "${up}" | jq -e '.browser_download_url // .name // .id' >/dev/null 2>&1; then
     echo "    ✓"
   else
-    echo "    ⚠️ 失败：${up}" >&2
+    echo "    ⚠️ 失败：${up:-(无响应/超时)}" >&2
+    echo "${fn}" >> "${SKIPPED_FILE}"
     fail=1
   fi
 done
@@ -143,6 +185,20 @@ else
 
   for mf in update.json update-fixed-webview2.json; do
     [ -f "updater-src/${mf}" ] || { echo "  （源无 ${mf}，跳过）"; continue; }
+
+    # 若该清单引用的某个安装包被跳过（超限/失败）未能上 Gitee，则不发布此清单，
+    # 否则 App 会拿到指向 Gitee 上不存在文件的地址。这类清单交给 GitHub/gh-proxy 端点兜底。
+    refs="$(jq -r '.platforms[]?.url // empty' "updater-src/${mf}" | sed 's#.*/##' | sort -u)"
+    missing=""
+    while IFS= read -r rf; do
+      [ -n "${rf}" ] || continue
+      if grep -Fxq "${rf}" "${SKIPPED_FILE}" 2>/dev/null; then missing="${missing} ${rf}"; fi
+    done <<< "${refs}"
+    if [ -n "${missing}" ]; then
+      echo "  ⏭ 跳过清单 ${mf}：以下安装包未能上 Gitee（走 GitHub 兜底）：${missing}"
+      continue
+    fi
+
     # 改写安装包地址 github → gitee（# 作分隔符，避免 URL 里的 /）
     sed "s#${GH_DL_PREFIX}#${GITEE_DL_PREFIX}#g" "updater-src/${mf}" > "updater-out/${mf}"
 
@@ -161,5 +217,6 @@ else
   done
 fi
 
+rm -f "${SKIPPED_FILE}"
 echo "==> 完成。"
 exit "${fail}"
