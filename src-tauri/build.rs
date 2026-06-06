@@ -28,11 +28,7 @@ fn ensure_geo_resources() {
 
     println!("cargo:rerun-if-changed=resources");
 
-    let missing: Vec<&str> = required
-        .iter()
-        .copied()
-        .filter(|f| !res_dir.join(f).exists())
-        .collect();
+    let missing: Vec<&str> = required.iter().copied().filter(|f| !res_dir.join(f).exists()).collect();
 
     if missing.is_empty() {
         return;
