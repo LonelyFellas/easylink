@@ -355,6 +355,34 @@ pub async fn init_resources() -> Result<()> {
         };
     }
 
+    // 运行期硬校验：geo 数据是分流规则（GEOSITE,cn / GEOIP,CN）的强依赖。
+    // 缺失会让 mihomo 联网下载 geo、超时 → 配置校验失败 → 前端「内核通信错误」。
+    // 这里把"静默核心失败"提前暴露成一条明确日志，便于定位（区分是没打进包还是拷贝失败）。
+    let geo_files = ["Country.mmdb", "geoip.dat", "geosite.dat"];
+    for file in geo_files.iter() {
+        let src_path = res_dir.join(file);
+        let dest_path = app_dir.join(file);
+        if !dest_path.exists() {
+            if src_path.exists() {
+                logging!(
+                    error,
+                    Type::Setup,
+                    "geo 资源 '{}' 存在于安装包但未能拷贝到工作目录 {:?}，分流规则将导致 mihomo 校验失败",
+                    file,
+                    app_dir,
+                );
+            } else {
+                logging!(
+                    error,
+                    Type::Setup,
+                    "geo 资源 '{}' 在安装包资源目录 {:?} 中缺失（发布构建可能漏跑 `pnpm prebuild`），mihomo 将因 GEOSITE/GEOIP 规则校验失败、前端报「内核通信错误」",
+                    file,
+                    res_dir,
+                );
+            }
+        }
+    }
+
     Ok(())
 }
 
