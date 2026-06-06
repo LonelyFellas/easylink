@@ -39,7 +39,12 @@
       },
       "actions": {
         "recharge": "充值",
-        "refreshDetail": "刷新用户详情"
+        "refreshDetail": "刷新用户详情",
+        "logout": "退出登录"
+      },
+      "logoutConfirm": {
+        "title": "退出登录",
+        "message": "确定要退出当前账号吗？退出后将关闭系统代理。"
       }
     },
     "membership": {

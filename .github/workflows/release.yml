@@ -617,11 +617,41 @@ jobs:
           PUBLISH_OWNER: ${{ env.PUBLISH_OWNER }}
           PUBLISH_REPO: ${{ env.PUBLISH_REPO }}
 
+  mirror-to-oss:
+    if: ${{ !contains(github.ref_name, '-rc') }}
+    name: Mirror release assets to Aliyun OSS
+    runs-on: ubuntu-latest
+    needs: [update_tag]
+    steps:
+      # update_tag 发布 release 后，所有平台的安装包都已挂到该 tag 上。
+      # 把它们整体拉下来，再上传到 OSS 的 temp/<tag>/，供国内用户直连下载。
+      - name: Download all release assets
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          PUBLISH_REPO_FULL: ${{ env.PUBLISH_OWNER }}/${{ env.PUBLISH_REPO }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir -p oss-upload
+          gh release download "$TAG" --repo "$PUBLISH_REPO_FULL" --dir oss-upload --pattern '*'
+          ls -la oss-upload
+
+      - name: Setup ossutil
+        uses: manyuanrong/setup-ossutil@v3.0
+        with:
+          endpoint: oss-cn-beijing.aliyuncs.com
+          access-key-id: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+
+      - name: Upload assets to OSS
+        run: |
+          ossutil cp -rf oss-upload/ oss://easylink-desktop/tags/${{ github.ref_name }}/
+
   release-update:
     if: ${{ !contains(github.ref_name, '-rc') }}
     name: Release Update
     runs-on: ubuntu-latest
-    needs: [update_tag]
+    # 依赖 mirror-to-oss：确保 OSS 上的安装包先就位，再发布指向它们的更新清单。
+    needs: [update_tag, mirror-to-oss]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -646,10 +676,24 @@ jobs:
           PUBLISH_OWNER: ${{ env.PUBLISH_OWNER }}
           PUBLISH_REPO: ${{ env.PUBLISH_REPO }}
 
+      # 把 updater.mjs 生成的 OSS 版清单上传到固定路径，
+      # tauri.conf.json 的 endpoints 第一个就指向它，实现清单也走国内直连。
+      - name: Setup ossutil
+        uses: manyuanrong/setup-ossutil@v3.0
+        with:
+          endpoint: oss-cn-beijing.aliyuncs.com
+          access-key-id: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+
+      - name: Upload updater manifest to OSS
+        run: |
+          ossutil cp -f update-proxy.json oss://easylink-desktop/tags/update-proxy.json
+
   release-update-for-fixed-webview2:
     if: ${{ !contains(github.ref_name, '-rc') }}
     runs-on: ubuntu-latest
-    needs: [update_tag]
+    # 依赖 mirror-to-oss：确保 fixed-webview2 安装包先传到 OSS，再发布指向它的清单。
+    needs: [update_tag, mirror-to-oss]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -673,4 +717,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
           PUBLISH_OWNER: ${{ env.PUBLISH_OWNER }}
           PUBLISH_REPO: ${{ env.PUBLISH_REPO }}
+
+      # 把 fixed-webview2 的 OSS 清单上传到固定路径，endpoints 第一个指向它。
+      - name: Setup ossutil
+        uses: manyuanrong/setup-ossutil@v3.0
+        with:
+          endpoint: oss-cn-beijing.aliyuncs.com
+          access-key-id: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+
+      - name: Upload fixed-webview2 manifest to OSS
+        run: |
+          ossutil cp -f update-fixed-webview2-proxy.json oss://easylink-desktop/tags/update-fixed-webview2-proxy.json
 

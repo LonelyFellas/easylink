@@ -1,12 +1,17 @@
+import { writeFileSync } from 'node:fs'
+
 import { getOctokit, context } from '@actions/github'
 import fetch from 'node-fetch'
 
 import { resolveUpdateLog, resolveUpdateLogDefault } from './updatelog.mjs'
 
-// GitHub 下载加速镜像前缀（用于 update-proxy.json 里的安装包下载地址）
-// 国内速度问题时优先在这里换源；末尾必须带 /
-// 备选：https://gh-proxy.com/  https://gh-proxy.org/  https://mirror.ghproxy.com/  https://update.hwdns.net/
-const GH_PROXY_PREFIX = 'https://ghfast.top/'
+// 阿里云 OSS 国内直连镜像（杭州）。CI 的 mirror-to-oss job 会把每个版本的
+// 安装包上传到 <OSS_BASE>/tags/<tag>/，这里把 update-proxy.json 的下载地址改写过去，
+// 让国内用户走 OSS 直连而非 GitHub。OSS 上的安装包与 GitHub 字节一致，
+// minisign 签名照常校验，安全性不受影响。
+const OSS_BASE = 'https://easylink-desktop.oss-cn-beijing.aliyuncs.com'
+// OSS 上安装包所在目录前缀（末尾不带 /，后面拼 /<tag>/<文件名>）
+const OSS_TAGS_PREFIX = `${OSS_BASE}/tags`
 
 // Add stable update JSON filenames
 const UPDATE_TAG_NAME = 'updater'
@@ -216,16 +221,29 @@ async function processRelease(github, options, tag, isAlpha) {
       }
     })
 
-    // Generate a proxy update file for accelerated GitHub resources
+    // 生成走 OSS 国内直连的 update-proxy.json：
+    // 把每个平台的安装包地址从 GitHub 改写成 <OSS_BASE>/tags/<tag>/<文件名>。
+    // 文件名取 GitHub 下载地址的最后一段（tauri 产物名不含空格/特殊字符，
+    // 与 ossutil 上传后的对象 key 完全一致）。
     const updateDataNew = JSON.parse(JSON.stringify(updateData))
 
     Object.entries(updateDataNew.platforms).forEach(([key, value]) => {
       if (value.url) {
-        updateDataNew.platforms[key].url = GH_PROXY_PREFIX + value.url
+        const fileName = value.url.split('/').pop()
+        updateDataNew.platforms[key].url =
+          `${OSS_TAGS_PREFIX}/${tag.name}/${fileName}`
       } else {
         console.log(`[Error]: updateDataNew.platforms.${key} is null`)
       }
     })
+
+    // 把稳定版的 OSS 清单写到本地，供 release-update job 用 ossutil
+    // 上传到 <OSS_BASE>/tags/update-proxy.json（固定路径，endpoints 第一个就指向它，
+    // 实现「清单也走国内直连」）。alpha 通道不参与 OSS 直连。
+    if (!isAlpha) {
+      writeFileSync('update-proxy.json', JSON.stringify(updateDataNew, null, 2))
+      console.log('Wrote update-proxy.json to local disk for OSS upload')
+    }
 
     // Get the appropriate updater release based on isAlpha flag
     const releaseTag = isAlpha ? ALPHA_TAG_NAME : UPDATE_TAG_NAME

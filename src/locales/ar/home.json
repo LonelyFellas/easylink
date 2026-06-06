@@ -39,7 +39,12 @@
       },
       "actions": {
         "recharge": "Recharge",
-        "refreshDetail": "Refresh user details"
+        "refreshDetail": "Refresh user details",
+        "logout": "Log out"
+      },
+      "logoutConfirm": {
+        "title": "Log out",
+        "message": "Log out of the current account? The system proxy will be turned off."
       }
     },
     "membership": {
