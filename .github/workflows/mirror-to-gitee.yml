@@ -1,0 +1,79 @@
+name: Mirror Release to Gitee
+
+# 把 GitHub Release 的全部产物镜像到 Gitee Releases，方便国内全速下载。
+# 触发方式：
+#   1. 自动：本仓库 "Release Build" 工作流（tag 发布）成功后自动同步该 tag。
+#   2. 手动：可指定 tag，留空则取源仓库最新 release。
+on:
+  workflow_run:
+    workflows: ["Release Build"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要同步的 release tag（如 v1.1.5；留空取最新）'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-gitee-${{ github.event.inputs.tag || github.event.workflow_run.head_branch || 'latest' }}
+  cancel-in-progress: false
+
+env:
+  # GitHub 上 release 实际所在的公开仓库（构建产物发布到这里）
+  SOURCE_REPO: ${{ vars.RELEASE_SOURCE_REPO || 'LonelyFellas/easylink' }}
+  GITEE_OWNER: ${{ vars.GITEE_OWNER }}
+  GITEE_REPO: ${{ vars.GITEE_REPO }}
+  GITEE_BRANCH: ${{ vars.GITEE_BRANCH || 'master' }}
+  GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  mirror:
+    name: Mirror to Gitee
+    runs-on: ubuntu-latest
+    # 自动触发时，仅当 "Release Build" 成功才同步；手动触发始终运行。
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: 解析 tag
+        id: resolve
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          RUN_TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            # "Release Build" 由 tag push 触发，head_branch 即该 tag
+            TAG="$RUN_TAG"
+            echo "由 Release Build 自动触发，tag：$TAG"
+            case "$TAG" in
+              v*.*.*) : ;;
+              *) echo "head_branch（$TAG）不是版本 tag，跳过同步。"; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0 ;;
+            esac
+          else
+            TAG="$INPUT_TAG"
+            if [ -z "$TAG" ]; then
+              TAG="$(gh release view -R "$SOURCE_REPO" --json tagName -q '.tagName')"
+              echo "未指定 tag，使用最新 release：$TAG"
+            fi
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: 校验 Gitee 配置
+        if: steps.resolve.outputs.skip != '1'
+        run: |
+          : "${GITEE_OWNER:?请在仓库 Settings → Variables 配置 GITEE_OWNER}"
+          : "${GITEE_REPO:?请在仓库 Settings → Variables 配置 GITEE_REPO}"
+          : "${GITEE_TOKEN:?请在仓库 Settings → Secrets 配置 GITEE_TOKEN}"
+
+      - name: 同步到 Gitee
+        if: steps.resolve.outputs.skip != '1'
+        run: bash .github/scripts/mirror-release-to-gitee.sh "${{ steps.resolve.outputs.tag }}"

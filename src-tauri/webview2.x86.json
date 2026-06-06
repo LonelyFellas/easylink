@@ -25,7 +25,7 @@
       "active": true,
       "dialog": false,
       "endpoints": [
-        "https://easylink-desktop.oss-cn-beijing.aliyuncs.com/tags/update-fixed-webview2-proxy.json",
+        "https://gitee.com/yu-shengming/elinkpc/releases/download/updater/update-fixed-webview2.json",
         "https://update.hwdns.net/https://github.com/LonelyFellas/easylink/releases/download/updater/update-fixed-webview2-proxy.json",
         "https://github.com/LonelyFellas/easylink/releases/download/updater/update-fixed-webview2.json"
       ],

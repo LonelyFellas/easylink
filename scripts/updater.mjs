@@ -1,17 +1,12 @@
-import { writeFileSync } from 'node:fs'
-
 import { getOctokit, context } from '@actions/github'
 import fetch from 'node-fetch'
 
 import { resolveUpdateLog, resolveUpdateLogDefault } from './updatelog.mjs'
 
-// 阿里云 OSS 国内直连镜像（杭州）。CI 的 mirror-to-oss job 会把每个版本的
-// 安装包上传到 <OSS_BASE>/tags/<tag>/，这里把 update-proxy.json 的下载地址改写过去，
-// 让国内用户走 OSS 直连而非 GitHub。OSS 上的安装包与 GitHub 字节一致，
-// minisign 签名照常校验，安全性不受影响。
-const OSS_BASE = 'https://easylink-desktop.oss-cn-beijing.aliyuncs.com'
-// OSS 上安装包所在目录前缀（末尾不带 /，后面拼 /<tag>/<文件名>）
-const OSS_TAGS_PREFIX = `${OSS_BASE}/tags`
+// 国内加速镜像：把 update-proxy.json 里的安装包地址用 gh-proxy 前缀包一层，
+// 让国内用户走镜像而非 GitHub 直连。镜像只是代理同一个 GitHub 文件，
+// 字节一致，minisign 签名照常校验，安全性不受影响。
+const PROXY_PREFIX = 'https://gh-proxy.org/'
 
 // Add stable update JSON filenames
 const UPDATE_TAG_NAME = 'updater'
@@ -221,29 +216,17 @@ async function processRelease(github, options, tag, isAlpha) {
       }
     })
 
-    // 生成走 OSS 国内直连的 update-proxy.json：
-    // 把每个平台的安装包地址从 GitHub 改写成 <OSS_BASE>/tags/<tag>/<文件名>。
-    // 文件名取 GitHub 下载地址的最后一段（tauri 产物名不含空格/特殊字符，
-    // 与 ossutil 上传后的对象 key 完全一致）。
+    // 生成走国内镜像的 update-proxy.json：
+    // 把每个平台的 GitHub 安装包地址用 gh-proxy 前缀包一层。
     const updateDataNew = JSON.parse(JSON.stringify(updateData))
 
     Object.entries(updateDataNew.platforms).forEach(([key, value]) => {
       if (value.url) {
-        const fileName = value.url.split('/').pop()
-        updateDataNew.platforms[key].url =
-          `${OSS_TAGS_PREFIX}/${tag.name}/${fileName}`
+        updateDataNew.platforms[key].url = `${PROXY_PREFIX}${value.url}`
       } else {
         console.log(`[Error]: updateDataNew.platforms.${key} is null`)
       }
     })
-
-    // 把稳定版的 OSS 清单写到本地，供 release-update job 用 ossutil
-    // 上传到 <OSS_BASE>/tags/update-proxy.json（固定路径，endpoints 第一个就指向它，
-    // 实现「清单也走国内直连」）。alpha 通道不参与 OSS 直连。
-    if (!isAlpha) {
-      writeFileSync('update-proxy.json', JSON.stringify(updateDataNew, null, 2))
-      console.log('Wrote update-proxy.json to local disk for OSS upload')
-    }
 
     // Get the appropriate updater release based on isAlpha flag
     const releaseTag = isAlpha ? ALPHA_TAG_NAME : UPDATE_TAG_NAME
