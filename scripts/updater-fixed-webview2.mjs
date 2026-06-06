@@ -37,17 +37,30 @@ async function resolveUpdater() {
   console.log(`Target release repo: ${options.owner}/${options.repo}`)
   const github = getOctokit(process.env.GITHUB_TOKEN)
 
-  const { data: tags } = await github.rest.repos.listTags({
-    ...options,
-    per_page: 10,
-    page: 1,
-  })
+  // 分页拉取全部 tag。只取前 10 个会在 tag 数超过 10 时漏掉最新版本，
+  // 导致 tag 为 undefined、清单文件没生成，进而 OSS 上传报 no such file。
+  let allTags = []
+  let page = 1
+  while (true) {
+    const { data: pageTags } = await github.rest.repos.listTags({
+      ...options,
+      per_page: 100,
+      page,
+    })
+    allTags = allTags.concat(pageTags)
+    if (pageTags.length < 100) break
+    page++
+  }
 
   // get the latest publish tag
   // GitHub listTags 不保证按版本号排序，必须自己按 semver 取最高版本
-  const tag = tags
+  const tag = allTags
     .filter((t) => /^v\d+\.\d+\.\d+$/.test(t.name))
     .sort((a, b) => compareSemverDesc(a.name, b.name))[0]
+
+  if (!tag) {
+    throw new Error('No stable vX.Y.Z tag found for fixed-webview2 updater')
+  }
 
   console.log(tag)
   console.log()
@@ -59,7 +72,9 @@ async function resolveUpdater() {
 
   const updateData = {
     name: tag.name,
-    notes: await resolveUpdateLog(tag.name), // use Changelog.md
+    notes: await resolveUpdateLog(tag.name).catch(
+      () => 'No changelog available',
+    ), // use Changelog.md
     pub_date: new Date().toISOString(),
     platforms: {
       'windows-x86_64': { signature: '', url: '' },
@@ -183,4 +198,8 @@ async function getSignature(url) {
   return response.text()
 }
 
-resolveUpdater().catch(console.error)
+// 真正失败时以非 0 退出，避免错误被吞掉后 job 仍显示绿色（之前就因此漏掉了 bug）。
+resolveUpdater().catch((e) => {
+  console.error(e)
+  process.exit(1)
+})
