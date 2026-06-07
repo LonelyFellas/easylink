@@ -1,8 +1,22 @@
 use super::CmdResult;
 use crate::core::autostart;
 use crate::{cmd::StringifyErr as _, feat, utils::dirs};
+use clash_verge_logging::{Type, logging};
 use smartstring::alias::String;
 use tauri::{AppHandle, Manager as _};
+
+/// 接收前端日志并写入应用日志文件（latest.log），用于排查纯前端侧问题，
+/// 例如内核 IPC 不可达导致的「内核通信错误 / 暂无激活节点」——这类失败
+/// 此前两端都无任何记录。level 取 error/warn/debug，其余按 info 处理。
+#[tauri::command]
+pub fn log_frontend(level: String, message: String) {
+    match level.as_str() {
+        "error" => logging!(error, Type::Frontend, "{}", message),
+        "warn" => logging!(warn, Type::Frontend, "{}", message),
+        "debug" => logging!(debug, Type::Frontend, "{}", message),
+        _ => logging!(info, Type::Frontend, "{}", message),
+    }
+}
 
 /// 打开应用程序所在目录
 #[tauri::command]

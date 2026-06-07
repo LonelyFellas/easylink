@@ -32,6 +32,12 @@ const TQ_MIHOMO = {
   staleTime: 1500,
   retry: 3,
   retryDelay: (attempt: number) => Math.min(200 * 2 ** attempt, 3000),
+  // 内核 IPC 在以下场景会短暂不可达：启动竞态、内核重启、socket 重建。
+  // 这些 mihomo 查询默认只在挂载时拉一次，失败 3 次后永久放弃，导致
+  // “内核通信错误 / 暂无激活节点”一直卡住。这里在拿不到数据时每 2s 轮询，
+  // 内核恢复应答后自动停止，实现失败态自愈。
+  refetchInterval: (query: { state: { data: unknown } }) =>
+    query.state.data === undefined ? 2000 : false,
 } as const
 
 const TQ_DEFAULTS = {
@@ -137,6 +143,10 @@ export const AppDataProvider = ({
       }
       lastProfileId = newProfileId
       lastUpdateTime = now
+      // profile 切换会让内核重载配置，模式/节点/规则都可能变；全部刷新，
+      // 同时让此前卡在失败态的 clashConfig / proxies 借机恢复。
+      refreshClashConfig().catch(() => {})
+      refreshProxy().catch(() => {})
       refreshRules().catch(() => {})
       refreshRuleProviders().catch(() => {})
     }
@@ -181,7 +191,7 @@ export const AppDataProvider = ({
         }
       })
     }
-  }, [refreshProxy, refreshRules, refreshRuleProviders])
+  }, [refreshProxy, refreshClashConfig, refreshRules, refreshRuleProviders])
 
   const refreshAll = useCallback(async () => {
     await Promise.all([

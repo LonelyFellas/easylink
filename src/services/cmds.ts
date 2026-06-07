@@ -9,6 +9,15 @@ export async function copyClashEnv() {
   return invoke<void>('copy_clash_env')
 }
 
+/** 把前端日志写进后端 latest.log，便于排查内核 IPC 不可达等纯前端侧问题。 */
+export function logFrontend(
+  level: 'error' | 'warn' | 'info' | 'debug',
+  message: string,
+) {
+  // 打点本身失败时不应影响主流程
+  invoke<void>('log_frontend', { level, message }).catch(() => {})
+}
+
 export async function getProfiles() {
   return invoke<IProfilesConfig>('get_profiles')
 }

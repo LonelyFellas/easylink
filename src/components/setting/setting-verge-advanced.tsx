@@ -3,7 +3,7 @@ import { Typography } from '@mui/material'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { DialogRef, TooltipIcon } from '@/components/base'
+import { type DialogRef, TooltipIcon } from '@/components/base'
 import { updateLastCheckTime } from '@/hooks/use-update'
 import {
   exitApp,
@@ -19,6 +19,7 @@ import { version } from '@root/package.json'
 
 import { BackupViewer } from './mods/backup-viewer'
 import { ConfigViewer } from './mods/config-viewer'
+import { DiagnosticsViewer } from './mods/diagnostics-viewer'
 import { HotkeyViewer } from './mods/hotkey-viewer'
 import { LayoutViewer } from './mods/layout-viewer'
 import { LiteModeViewer } from './mods/lite-mode-viewer'
@@ -42,6 +43,7 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
   const updateRef = useRef<DialogRef>(null)
   const backupRef = useRef<DialogRef>(null)
   const liteModeRef = useRef<DialogRef>(null)
+  const diagnosticsRef = useRef<DialogRef>(null)
 
   const onCheckUpdate = async () => {
     try {
@@ -83,6 +85,7 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
       <UpdateViewer ref={updateRef} />
       <BackupViewer ref={backupRef} />
       <LiteModeViewer ref={liteModeRef} />
+      <DiagnosticsViewer ref={diagnosticsRef} />
 
       <SettingItem
         onClick={() => backupRef.current?.open()}
@@ -129,6 +132,11 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
       <SettingItem
         onClick={openDevTools}
         label={t('settings.components.verge.advanced.fields.openDevTools')}
+      />
+
+      <SettingItem
+        onClick={() => diagnosticsRef.current?.open()}
+        label="诊断日志 / Diagnostics"
       />
 
       <SettingItem

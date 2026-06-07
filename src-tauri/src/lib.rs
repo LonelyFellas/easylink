@@ -149,6 +149,7 @@ mod app_init {
             cmd::open_core_dir,
             cmd::open_app_log,
             cmd::open_core_log,
+            cmd::log_frontend,
             cmd::get_portable_flag,
             cmd::get_network_interfaces,
             cmd::get_system_hostname,
