@@ -89,6 +89,15 @@ jobs:
           TAG: ${{ steps.resolve.outputs.tag }}
         run: bash .github/scripts/mirror-release-to-gitee.sh prepare
 
+      # Gitee 免费仓库附件总量上限 1GB，旧版本堆积会撑爆配额导致新版 exe 上传 400。
+      # 上传前先清理：只保留最新 2 个版本，删更旧版本 release 腾配额（updater 永不删）。
+      - name: 清理旧版本腾 Gitee 配额（保留最新 2 个）
+        if: steps.resolve.outputs.skip != '1'
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
+          PRUNE_KEEP: '2'
+        run: bash .github/scripts/mirror-release-to-gitee.sh prune
+
   # ---------- 阶段 2：matrix 按平台×架构并行上传 ----------
   upload:
     name: Upload ${{ matrix.name }}

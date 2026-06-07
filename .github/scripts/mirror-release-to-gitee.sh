@@ -6,9 +6,10 @@
 #
 # 子命令（供 GitHub Actions 多 runner 并行 matrix 调用）：
 #   prepare              在 Gitee 确保版本 release 存在，输出其 id（写 GITHUB_OUTPUT 的 rid）
+#   prune                只留最新 PRUNE_KEEP 个版本 release，删更旧的以腾 Gitee 1GB 配额
 #   upload <rid> [glob…] 下载匹配 glob 的产物并上传到该 release；无 glob 则上传全部
 #   manifest <rid>       同步自动更新清单（按 Gitee 上实际已传的附件判断是否齐全）
-#   all <tag>            单机全量：prepare + upload(全部) + manifest（本地手动用，兼容旧用法）
+#   all <tag>            单机全量：prepare + prune + upload(全部) + manifest（本地手动用，兼容旧用法）
 #
 # 依赖：gh、curl、jq（GitHub Actions ubuntu runner 已内置；本地需自行安装并 gh auth login）
 #
@@ -105,6 +106,17 @@ gitee_delete_asset() {
     >/dev/null 2>&1 || true
 }
 
+# 列出仓库所有 release，输出「tag_name<TAB>id」每行一个（按时间倒序，取前 100 个）
+gitee_list_releases() {
+  curl -fsS "${API}/repos/${OWNER}/${REPO}/releases?access_token=${TOKEN}&page=1&per_page=100&direction=desc" 2>/dev/null \
+    | jq -r '.[]? | "\(.tag_name)\t\(.id)"'
+}
+
+# 删除整个 release（连带其全部附件，释放仓库配额）。参数：release_id
+gitee_delete_release() {
+  curl -fsS -X DELETE "${API}/repos/${OWNER}/${REPO}/releases/$1?access_token=${TOKEN}" >/dev/null 2>&1
+}
+
 # 上传附件。参数：release_id 文件路径
 gitee_upload_asset() {
   curl -fsS --connect-timeout 30 --max-time 1800 --retry 2 --retry-delay 5 \
@@ -161,6 +173,38 @@ cmd_prepare() {
   echo "==> Gitee release id = ${rid}" >&2
   [ -n "${GITHUB_OUTPUT:-}" ] && echo "rid=${rid}" >> "${GITHUB_OUTPUT}"
   echo "${rid}"
+}
+
+# ---------- 子命令：prune ----------
+# 用法：cmd_prune
+# Gitee 免费仓库所有 release 附件总量上限 1GB。镜像只为「国内全速下载 + 自动更新」，
+# 自动更新只需最新版，旧版本安装包纯占配额。这里只保留最新 PRUNE_KEEP 个版本 release，
+# 删掉更旧的（连带其附件腾配额）。updater 等非版本 release 永不删；当前 TAG 强制保留。
+PRUNE_KEEP="${PRUNE_KEEP:-2}"
+cmd_prune() {
+  : "${TAG:?需要环境变量 TAG}"
+  echo "==> prune：保留最新 ${PRUNE_KEEP} 个版本，清理更旧版本以腾 Gitee 1GB 配额（updater 永不删）"
+  local all; all="$(gitee_list_releases)"
+  if [ -z "${all}" ]; then echo "  Gitee 暂无 release，跳过。"; return 0; fi
+
+  # 仅 vX.Y.Z 形式的版本 tag 参与清理；updater 等非版本 release 永远保留
+  local versions; versions="$(printf '%s\n' "${all}" | awk -F'\t' '$1 ~ /^v[0-9]+\.[0-9]+\.[0-9]+/ {print $1}')"
+  if [ -z "${versions}" ]; then echo "  无版本 release，跳过。"; return 0; fi
+
+  # 按版本号降序取要保留的最新 N 个，并强制保留当前正在镜像的 TAG
+  local keep; keep="$(printf '%s\n' "${versions}" | sort -Vr | head -n "${PRUNE_KEEP}")"
+  keep="$(printf '%s\n%s\n' "${keep}" "${TAG}" | sort -u)"
+  echo "  保留版本：$(printf '%s\n' "${keep}" | sort -Vr | tr '\n' ' ')"
+
+  local tag id pruned=0
+  while IFS=$'\t' read -r tag id; do
+    [ -n "${tag}" ] || continue
+    printf '%s\n' "${versions}" | grep -Fxq "${tag}" || continue   # 非版本 release：跳过
+    printf '%s\n' "${keep}"     | grep -Fxq "${tag}" && continue   # 在保留集：跳过
+    echo "  🗑 删除旧版本 release：${tag}（id=${id}）"
+    if gitee_delete_release "${id}"; then echo "    ✓ 已删除"; pruned=$((pruned+1)); else echo "    ⚠️ 删除失败：${tag}"; fi
+  done <<< "${all}"
+  echo "==> prune 完成，清理了 ${pruned} 个旧版本。"
 }
 
 # ---------- 子命令：upload ----------
@@ -305,6 +349,7 @@ cmd_manifest() {
 cmd_all() {
   export TAG="${1:?用法: mirror-release-to-gitee.sh all <tag>}"
   local rid; rid="$(cmd_prepare)"
+  cmd_prune
   cmd_upload "${rid}"
   cmd_manifest "${rid}"
 }
@@ -313,10 +358,11 @@ cmd_all() {
 echo "==> 源:   github.com/${SOURCE_REPO}"
 echo "==> 目标: gitee.com/${OWNER}/${REPO}（分支 ${BRANCH}）"
 
-SUB="${1:?用法: mirror-release-to-gitee.sh <prepare|upload|manifest|all> ...}"
+SUB="${1:?用法: mirror-release-to-gitee.sh <prepare|prune|upload|manifest|all> ...}"
 shift || true
 case "${SUB}" in
   prepare)  cmd_prepare "$@" ;;
+  prune)    cmd_prune "$@" ;;
   upload)   cmd_upload "$@" ;;
   manifest) cmd_manifest "$@" ;;
   all)      cmd_all "$@" ;;
