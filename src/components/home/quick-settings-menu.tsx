@@ -1,4 +1,4 @@
-import { TuneRounded } from '@mui/icons-material'
+import { BugReportRounded, TuneRounded } from '@mui/icons-material'
 import {
   Box,
   Divider,
@@ -12,9 +12,11 @@ import {
   Typography,
   styled,
 } from '@mui/material'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import type { DialogRef } from '@/components/base'
+import { DiagnosticsViewer } from '@/components/setting/mods/diagnostics-viewer'
 import { ThemeModeSwitch } from '@/components/setting/mods/theme-mode-switch'
 import { useSystemProxyState } from '@/hooks/use-system-proxy-state'
 import { useVerge } from '@/hooks/use-verge'
@@ -116,6 +118,7 @@ export const QuickSettingsMenu = () => {
   const { verge, mutateVerge, patchVerge } = useVerge()
   const { indicator: systemProxyOn, toggleSystemProxy } = useSystemProxyState()
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+  const diagnosticsRef = useRef<DialogRef>(null)
 
   const { enable_auto_launch, enable_silent_start, theme_mode, language } =
     verge ?? {}
@@ -223,8 +226,32 @@ export const QuickSettingsMenu = () => {
               ))}
             </Select>
           </Box>
+
+          <Divider sx={{ my: 0.5 }} />
+
+          <Box
+            onClick={() => {
+              setAnchorEl(null)
+              diagnosticsRef.current?.open()
+            }}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1,
+              py: 0.75,
+              borderRadius: 1,
+              cursor: 'pointer',
+              '&:hover': { bgcolor: 'action.hover' },
+            }}
+          >
+            <BugReportRounded fontSize="small" />
+            <Typography variant="body2">诊断日志</Typography>
+          </Box>
         </Stack>
       </Popover>
+
+      <DiagnosticsViewer ref={diagnosticsRef} />
     </>
   )
 }
