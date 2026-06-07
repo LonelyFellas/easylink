@@ -318,7 +318,7 @@ const HomePage = () => {
   return (
     <BasePage
       // title={t("home.page.title")}
-      title={<img src={logo} alt="Easy Link" />}
+      title={<img src={logo} alt="Easy Link" width={100} />}
       contentStyle={{ padding: 2 }}
       header={
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
