@@ -10,6 +10,7 @@ import {
   getProfiles,
   getUserNodes,
   patchProfilesConfig,
+  readProfileFile,
   saveProfileFile,
 } from './cmds'
 
@@ -58,10 +59,37 @@ export async function refreshUserNodes(
 }
 
 /**
+ * 串行化所有 profile 写盘+激活。
+ *
+ * 登录、刷新用户详情、刷新节点三条路径都会调用 ensureNodeProfile，写的是
+ * 同一个 easylink_auto.yaml 并触发内核 reload。这些调用之间原本没有任何互斥，
+ * 两次并发（如同时点「登录状态」和「当前节点」的刷新）会交错成
+ * 「写 A → 写 B → reload A → reload B」，把配置写坏 / 双重 reload，
+ * 正是「内核通信错误 / 暂无激活节点」的根因之一。这里用一条 Promise 链强制排队。
+ */
+let writeChain: Promise<unknown> = Promise.resolve()
+
+function serializeProfileWrite<T>(task: () => Promise<T>): Promise<T> {
+  const run = writeChain.then(task, task)
+  // 无论成败都让链继续，避免一次失败后卡死后续写入
+  writeChain = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
+/**
  * 登录后用返回的 nodes 生成 mihomo profile，写盘 → 激活 → 恢复本用户上次选择的节点。
  * 任一步失败抛错；调用方负责 try/catch 并提示用户。
+ *
+ * 已串行化：并发调用会自动排队，不会交错写同一份 yaml。
  */
-export async function ensureNodeProfile(session: IAuthSession): Promise<void> {
+export function ensureNodeProfile(session: IAuthSession): Promise<void> {
+  return serializeProfileWrite(() => ensureNodeProfileImpl(session))
+}
+
+async function ensureNodeProfileImpl(session: IAuthSession): Promise<void> {
   // nodes 为空（如账号过期）也要重新生成 profile：后端会产出「仅 DIRECT」配置，
   // 借此清掉上一个用户的旧节点，并在下方回退到 DIRECT 直连。
   const nodes = session.nodes ?? []
@@ -71,26 +99,41 @@ export async function ensureNodeProfile(session: IAuthSession): Promise<void> {
   const profiles = await getProfiles()
   const items = profiles.items ?? []
   const exists = items.some((it) => it.uid === AUTO_PROFILE_UID)
+  const isCurrent = profiles.current === AUTO_PROFILE_UID
 
-  if (exists) {
-    const ok = await saveProfileFile(AUTO_PROFILE_UID, yaml)
-    if (!ok) throw new Error('更新订阅配置失败')
-  } else {
-    await createProfile(
-      {
-        uid: AUTO_PROFILE_UID,
-        type: 'local',
-        name: AUTO_PROFILE_NAME,
-      },
-      yaml,
-    )
+  // 去重：profile 已存在、已是当前激活、且磁盘内容与本次完全一致时，
+  // 跳过写盘 + 重新激活（即跳过一次内核 reload）。重复 reload 是登录/刷新后
+  // 「内核通信错误」短暂闪现的剩余来源；内容没变就没必要 reload。
+  let needWrite = true
+  if (exists && isCurrent) {
+    const current = await readProfileFile(AUTO_PROFILE_UID).catch(() => null)
+    // 容忍末尾换行等无意义差异
+    if (current != null && current.trim() === yaml.trim()) {
+      needWrite = false
+    }
   }
 
-  const activated = await patchProfilesConfig({ current: AUTO_PROFILE_UID })
-  if (!activated) throw new Error('激活订阅配置失败')
+  if (needWrite) {
+    if (exists) {
+      const ok = await saveProfileFile(AUTO_PROFILE_UID, yaml)
+      if (!ok) throw new Error('更新订阅配置失败')
+    } else {
+      await createProfile(
+        {
+          uid: AUTO_PROFILE_UID,
+          type: 'local',
+          name: AUTO_PROFILE_NAME,
+        },
+        yaml,
+      )
+    }
 
-  // mihomo reload 是异步的，等一小段时间再选节点
-  await new Promise((resolve) => setTimeout(resolve, 300))
+    const activated = await patchProfilesConfig({ current: AUTO_PROFILE_UID })
+    if (!activated) throw new Error('激活订阅配置失败')
+
+    // mihomo reload 是异步的，等一小段时间再选节点
+    await new Promise((resolve) => setTimeout(resolve, 300))
+  }
 
   // 按 user id 绑定的缓存恢复默认节点（缓存在 Rust 后端）：
   // - 有缓存且节点仍在 → 切回该节点（包括用户主动选过的 DIRECT）；

@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import type React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { ensureNodeProfile } from '@/services/auto-subscribe'
 import {
@@ -11,6 +12,7 @@ import {
   getUserInfo,
   getVerifyCodeByEmail,
 } from '@/services/cmds'
+import { showNotice } from '@/services/notice-service'
 
 import { AuthContext } from './auth-context'
 
@@ -25,13 +27,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return result
   }, [])
 
-  // 登录后刷新详情：失败也不阻断登录流程（卡片会回退到 session）
+  // 登录后刷新详情：失败也不阻断登录流程（卡片会回退到 session）。返回详情或 null。
   const safeFetchUserDetail = useCallback(
-    async (userId: string) => {
+    async (userId: string): Promise<IUserInfo | null> => {
       try {
-        await fetchUserDetail(userId)
+        return await fetchUserDetail(userId)
       } catch (error) {
         console.warn('[AuthProvider] 拉取个人详情失败:', error)
+        return null
       }
     },
     [fetchUserDetail],
@@ -39,13 +42,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // 设置会话并按新账号刷新详情：三个登录入口共用，确保切换账号时
   // userDetail 与 session 同步更新（卡片优先展示 userDetail）。
+  // 注意：此函数本身不写 profile，启动恢复会话时直接复用、不触发订阅写盘。
   const applySession = useCallback(
     async (next: IAuthSession) => {
       setSession(next)
-      if (next?.id) await safeFetchUserDetail(next.id.toString())
-      return next
+      const detail = next?.id
+        ? await safeFetchUserDetail(next.id.toString())
+        : null
+      return { session: next, detail }
     },
     [safeFetchUserDetail],
+  )
+
+  // 登录/注册专用：等用户详情拉完，用「详情里的节点列表」走一次自动订阅。
+  // 节点源统一以用户详情为准（detail.nodes），不再用 session.nodes 二次构建写盘——
+  // 避免登录后约 1 秒内出现「先正常加载、又被第二次写入/reload 冲垮」的内核错误。
+  // 订阅失败不阻断进入主页。
+  const loginAndSubscribe = useCallback(
+    async (raw: IAuthSession): Promise<IAuthSession> => {
+      const { session: next, detail } = await applySession(raw)
+      // 节点源以用户详情为准；详情拉取失败或暂时为空时回退到登录返回的节点，
+      // 避免把已有节点误清成「仅 DIRECT」。
+      const nodes = detail?.nodes?.length ? detail.nodes : (next.nodes ?? [])
+      try {
+        await ensureNodeProfile({ ...next, nodes })
+      } catch (error) {
+        console.error('[AuthProvider] 自动订阅失败:', error)
+        showNotice.error((error as Error)?.toString?.() ?? String(error))
+      }
+      return next
+    },
+    [applySession],
   )
 
   useEffect(() => {
@@ -81,19 +108,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = useCallback(
     (username: string, password: string) =>
-      authLogin(username, { password }).then(applySession),
-    [applySession],
+      authLogin(username, { password }).then(loginAndSubscribe),
+    [loginAndSubscribe],
   )
 
   const loginByCode = useCallback(
     (phone: string, code: string) =>
-      authLogin(phone, { code }).then(applySession),
-    [applySession],
+      authLogin(phone, { code }).then(loginAndSubscribe),
+    [loginAndSubscribe],
   )
 
   const register = useCallback(
-    (params: IAuthRegister) => authRegister({ ...params }).then(applySession),
-    [applySession],
+    (params: IAuthRegister) =>
+      authRegister({ ...params }).then(loginAndSubscribe),
+    [loginAndSubscribe],
   )
 
   const logout = useCallback(async () => {

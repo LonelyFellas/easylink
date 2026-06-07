@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router'
 
 import { useAppRefreshers } from '@/providers/app-data-context'
 import { useAuth } from '@/providers/auth-context'
-import { ensureNodeProfile } from '@/services/auto-subscribe'
 import { patchVergeConfig } from '@/services/cmds'
 import { showNotice } from '@/services/notice-service'
 
@@ -112,7 +111,6 @@ export function useLoginForm() {
       if (!validateTarget()) return
 
       const useCode = tab === 'phone' && method === 'code'
-      let session: IAuthSession
       if (useCode) {
         if (!code.trim()) {
           setCodeError(t('auth.errors.codeEmpty'))
@@ -123,23 +121,18 @@ export function useLoginForm() {
           return
         }
         setCodeError('')
-        session = await loginByCode(target, code.trim())
+        await loginByCode(target, code.trim())
       } else {
         if (!password) {
           setPasswordError(t('auth.errors.passwordEmpty'))
           return
         }
         setPasswordError('')
-        session = await login(target, password)
+        await login(target, password)
       }
 
-      // 登录成功后用返回的 nodes 自动生成并激活订阅；订阅失败不阻挡进入主页
-      try {
-        await ensureNodeProfile(session)
-      } catch (subscribeErr: any) {
-        console.error('[login] 自动订阅失败:', subscribeErr)
-        showNotice.error(subscribeErr?.toString?.() ?? String(subscribeErr))
-      }
+      // 自动订阅已在 login/loginByCode 内部完成（等用户详情拉完→用详情节点单次写盘），
+      // 此处不再重复构建/写入，避免并发写坏 profile 导致内核错误。
 
       // 登录后自动打开系统代理（与登出时关闭系统代理 + TUN 对应）
       try {
