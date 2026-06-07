@@ -134,6 +134,10 @@ upload_one() {
     echo "  ✓ ${fn}  ${mb}MB @ ${rate}  用时${secs%.*}s"
   else
     echo "  ⚠️ 失败：${fn}（HTTP ${code:-?}，${rate}，用时${secs%.*}s）"
+    # 打印 Gitee 返回的响应体，定位 400 真因（大小超限/配额满/类型受限等）
+    local body; body="$(jq -r '.message // (.error // empty)' < "${resp}" 2>/dev/null || true)"
+    [ -z "${body}" ] && body="$(head -c 500 "${resp}" 2>/dev/null || true)"
+    echo "     ↳ Gitee 响应：${body:-（空）}"
     : > "${FAILED_DIR}/${fn}"
   fi
   rm -f "${resp}"
