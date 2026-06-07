@@ -178,9 +178,10 @@ cmd_prepare() {
 # ---------- 子命令：prune ----------
 # 用法：cmd_prune
 # Gitee 免费仓库所有 release 附件总量上限 1GB。镜像只为「国内全速下载 + 自动更新」，
-# 自动更新只需最新版，旧版本安装包纯占配额。这里只保留最新 PRUNE_KEEP 个版本 release，
-# 删掉更旧的（连带其附件腾配额）。updater 等非版本 release 永不删；当前 TAG 强制保留。
-PRUNE_KEEP="${PRUNE_KEEP:-2}"
+# 自动更新只需最新版，旧版本安装包纯占配额（单版本全平台产物已接近 1GB，留 2 版必超）。
+# 这里只保留最新 PRUNE_KEEP（默认 1）个版本 release，删掉更旧的（连带其附件腾配额）。
+# updater 等非版本 release 永不删；当前 TAG 强制保留。
+PRUNE_KEEP="${PRUNE_KEEP:-1}"
 cmd_prune() {
   : "${TAG:?需要环境变量 TAG}"
   echo "==> prune：保留最新 ${PRUNE_KEEP} 个版本，清理更旧版本以腾 Gitee 1GB 配额（updater 永不删）"
